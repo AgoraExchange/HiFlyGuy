@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FlyGuy • Night desk terminal</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0a121c;color:#b8d3df;font:12px Consolas,monospace;height:100dvh;display:flex;flex-direction:column}header{padding:15px 18px;display:flex;align-items:center;gap:16px;border-bottom:1px solid #243748}header strong{color:#6ce7df;letter-spacing:2px;font-size:15px}header small{margin-left:auto;color:#7393a7;font-size:9px}select,button{font:inherit;background:#152536;color:#bfdfeb;border:1px solid #365367;border-radius:4px;padding:6px;cursor:pointer}a{color:#69d5d6}main{flex:1;min-height:0;position:relative;margin:12px 14px 0;border:1px solid #243748;border-radius:6px;overflow:hidden}.chart-host{height:100%}.tradingview-widget-container,.tradingview-widget-container__widget{height:100%;width:100%}.feed-status{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 100%,#153749,#0b1622 70%);display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;gap:14px;padding:24px}.feed-status strong{font-size:23px;font-weight:400;color:#d1e3eb}.feed-status p{max-width:400px;line-height:1.7;margin:0;color:#7795a8}.feed-status .orb{width:48px;height:48px;border:1px solid #4ec9cf;border-radius:50%;display:grid;place-items:center;color:#6ce7df;font-size:24px;box-shadow:0 0 36px #4ec9cf22}.feed-status small{letter-spacing:2px;color:#60c8c6}.feed-status[hidden]{display:none}.feed-links{display:flex;gap:14px;align-items:center;font-size:11px}.credit{padding:8px 16px;display:flex;justify-content:space-between;color:#7999a8;font-size:9px}.credit a{text-decoration:none}footer{padding:12px 18px;display:flex;align-items:center;gap:20px;background:#0e1d2a;border-top:1px solid #294154}footer b{display:block;font-weight:400;font-size:16px;color:#d0e9ed;margin-top:5px}footer small{font-size:8px;letter-spacing:1.4px;color:#6c97a9}.pulse{display:flex;align-items:end;gap:3px;height:30px;margin-left:auto}.pulse i{width:4px;background:#58c6cd;height:4px}footer>span:last-child{font-size:8px;color:#7296a8;max-width:110px;line-height:1.7}@media(max-width:500px){header{padding:10px;gap:10px}header strong{font-size:11px;letter-spacing:1px}header small{display:none}select{max-width:135px;font-size:11px}footer{gap:14px;padding:10px}footer b{font-size:12px}.pulse{display:none}main{margin:8px 8px 0}.credit{font-size:8px}.feed-status strong{font-size:19px}}
+.scene-market{position:relative}.scene-market[hidden],#symbol[hidden]{display:none}.scene-market>button{min-width:140px;text-align:left;color:#91ebe0}.scene-market>button::after{content:' ▾';float:right;margin-left:16px}.market-menu{position:absolute;top:calc(100% + 7px);left:0;min-width:190px;padding:5px;background:#122638;border:1px solid #527e8e;border-radius:6px;box-shadow:0 8px 25px #0009;z-index:20}.market-menu[hidden]{display:none}.market-menu button{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 12px}.market-menu button:hover,.market-menu button[aria-selected=true]{background:#254550;color:#8aeee0}header{position:relative;z-index:2}
+</style></head><body>
+<header><strong>FLYGUY / TERMINAL</strong><select id="symbol" aria-label="Market symbol"><option value="BITSTAMP:BTCUSD">BTC / USD</option><option value="COINBASE:ETHUSD">ETH / USD</option><option value="NASDAQ:AAPL">Apple · AAPL</option><option value="NASDAQ:NVDA">NVIDIA · NVDA</option></select><small>NIGHT DESK · 03</small></header>
+<main><div class="chart-host" id="chart-host"></div><div class="feed-status" id="feed-status" role="status"><div class="orb">↗</div><small>MARKET OBSERVATORY</small><strong id="status-title">Connecting to TradingView</strong><p id="status-copy">Opening the market feed. Your little observer has a front-row seat.</p><div class="feed-links"><button id="retry" hidden>Reconnect</button><a id="fallback-link" href="https://www.tradingview.com/symbols/BTCUSD/" target="_blank" rel="noopener noreferrer">Open on TradingView ↗</a></div></div></main>
+<div class="credit"><a id="credit-link" href="https://www.tradingview.com/symbols/BTCUSD/" target="_blank" rel="noopener nofollow">BTCUSD chart by TradingView</a><span id="feed-label">External market feed · connecting</span></div>
+<footer><div><small>FLYGUY ACTIVITY</small><b id="activity">Awaiting observer</b></div><div><small>ENERGY</small><b id="energy">—</b></div><div><small>SESSION</small><b id="session">00:00</b></div><div class="pulse" id="pulse"></div><span>SIMULATED PET TELEMETRY<br>Market data is separate.</span></footer>
+<script>
+const $ = s => document.querySelector(s);
+let generation = 0, timer, observer;
+const names = { 'BITSTAMP:BTCUSD': ['BTCUSD', 'BTCUSD'], 'COINBASE:ETHUSD': ['ETHUSD', 'ETHUSD'], 'KRAKEN:XMRUSD': ['XMRUSD', 'XMRUSD'], 'NASDAQ:AAPL': ['AAPL', 'NASDAQ-AAPL'], 'NASDAQ:NVDA': ['NVDA', 'NASDAQ-NVDA'] };
+const symbolSelect = $('#symbol');
+symbolSelect.add(new Option('XMR / USD', 'KRAKEN:XMRUSD'), 2);
+const sceneMarket = document.createElement('div'); sceneMarket.className = 'scene-market';
+const marketButton = document.createElement('button'); marketButton.id = 'scene-market-button'; marketButton.setAttribute('aria-haspopup', 'listbox'); marketButton.setAttribute('aria-expanded', 'false'); marketButton.setAttribute('aria-controls', 'scene-market-menu');
+const marketMenu = document.createElement('div'); marketMenu.id = 'scene-market-menu'; marketMenu.className = 'market-menu'; marketMenu.setAttribute('role', 'listbox'); marketMenu.setAttribute('aria-label', 'Choose market'); marketMenu.hidden = true;
+function closeMarketMenu() { marketMenu.hidden = true; marketButton.setAttribute('aria-expanded', 'false'); }
+function updateMarketMenu() {
+  marketButton.textContent = symbolSelect.selectedOptions[0].textContent;
+  for (const option of marketMenu.children) option.setAttribute('aria-selected', String(option.dataset.symbol === symbolSelect.value));
+}
+for (const option of symbolSelect.options) {
+  const button = document.createElement('button'); button.textContent = option.textContent; button.dataset.symbol = option.value; button.setAttribute('role', 'option');
+  button.onclick = () => { symbolSelect.value = option.value; closeMarketMenu(); updateMarketMenu(); mount(); };
+  marketMenu.append(button);
+}
+marketButton.onclick = () => { marketMenu.hidden = !marketMenu.hidden; marketButton.setAttribute('aria-expanded', String(!marketMenu.hidden)); };
+sceneMarket.append(marketButton, marketMenu); symbolSelect.after(sceneMarket);
+function setMarketMode(expanded) { sceneMarket.hidden = expanded; symbolSelect.hidden = !expanded; closeMarketMenu(); updateMarketMenu(); }
+setMarketMode(window === parent);
+function mount() {
+  const id = ++generation; clearTimeout(timer); observer?.disconnect();
+  const symbol = $('#symbol').value, [name, path] = names[symbol];
+  $('#credit-link').textContent = name + ' chart by TradingView';
+  $('#credit-link').href = $('#fallback-link').href = 'https://www.tradingview.com/symbols/' + path + '/';
+  $('#feed-status').hidden = false; $('#retry').hidden = true;
+  $('#status-title').textContent = 'Connecting to TradingView'; $('#status-copy').textContent = 'Opening the market feed. Your little observer has a front-row seat.';
+  $('#feed-label').textContent = 'External market feed · connecting';
+  const host = $('#chart-host'); host.replaceChildren();
+  const wrapper = document.createElement('div'); wrapper.className = 'tradingview-widget-container';
+  const widget = document.createElement('div'); widget.className = 'tradingview-widget-container__widget'; wrapper.append(widget); host.append(wrapper);
+  const fail = () => { if (generation !== id) return; $('#feed-status').hidden = false; $('#retry').hidden = false; $('#status-title').textContent = 'Market feed unavailable'; $('#status-copy').textContent = 'TradingView could not connect here. Reconnect or open the chart directly. FlyGuy’s world keeps running.'; $('#feed-label').textContent = 'No market data received'; };
+  observer = new MutationObserver(() => {
+    const frame = wrapper.querySelector('iframe'); if (!frame || frame.dataset.observed) return;
+    frame.dataset.observed = 'true'; frame.title = name + ' chart by TradingView';
+    frame.addEventListener('load', () => { if (generation !== id) return; clearTimeout(timer); $('#feed-status').hidden = true; $('#feed-label').textContent = 'TradingView · availability & delays vary by market'; });
+  }); observer.observe(wrapper, { subtree: true, childList: true });
+  const script = document.createElement('script'); script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'; script.async = true;
+  script.textContent = JSON.stringify({ autosize:true, symbol, interval:'60', timezone:'Etc/UTC', theme:'dark', style:'1', locale:'en', backgroundColor:'#0a121c', gridColor:'rgba(80, 135, 160, 0.10)', allow_symbol_change:true, hide_top_toolbar:false, hide_side_toolbar:true, withdateranges:true, save_image:false, calendar:false, details:false, support_host:'https://www.tradingview.com' });
+  script.onerror = fail; wrapper.append(script); timer = setTimeout(fail, 15000);
+}
+$('#retry').onclick = mount; $('#symbol').onchange = () => { updateMarketMenu(); mount(); };
+for (let i=0;i<24;i++) $('#pulse').append(document.createElement('i'));
+window.addEventListener('message', e => {
+  if (e.origin !== location.origin || e.source !== parent) return;
+  if (e.data?.type === 'market-mode') { setMarketMode(e.data.expanded === true); return; }
+  if (e.data?.type === 'market-pointer') {
+    const {x, y} = e.data;
+    if (sceneMarket.hidden || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return;
+    const button = document.elementFromPoint(x, y)?.closest('button');
+    if (button) button.click(); else closeMarketMenu();
+    return;
+  }
+  if (e.data?.type !== 'flyguy-telemetry') return;
+  const d = e.data; $('#activity').textContent = d.state; $('#energy').textContent = Math.round(d.energy*100)+'%';
+  $('#session').textContent = Math.floor(d.time/60).toString().padStart(2,'0')+':'+Math.floor(d.time%60).toString().padStart(2,'0');
+  [...$('#pulse').children].forEach((bar,i) => bar.style.height = (3 + Object.values(d.signals)[i%4]*24 + (Math.sin(d.time*3+i)+1)*3)+'px');
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') parent.postMessage({ type: 'terminal-escape' }, location.origin); });
+mount();
+</script></body></html>

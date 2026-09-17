@@ -167,4 +167,3 @@ Production files are written to `dist/`. Serve them through an HTTP server; open
 | `vite.config.js` | Local server and production build |
 
 The native Vite config loader and disabled dependency prebundling avoid ancestor-directory access problems in this machine's restricted workspace. JavaScript dependencies are bundled locally. The optional Google Fonts stylesheet falls back to local sans-serif fonts when offline.
-

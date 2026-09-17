@@ -1,0 +1,46 @@
+.viewport{height:640px;border-color:#3b4e57}
+.viewport:fullscreen{height:100dvh}
+.viewport .scene-title,.viewport .desk-caption{display:none}
+.viewport .scene-top{z-index:2}
+.viewport .environment-controls{right:65px;left:23px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:2px;background:#101a24eb;border-color:#354855}
+.viewport .environment-controls button{position:relative;justify-content:center;padding:9px 4px;font-size:8px;gap:5px}
+.viewport .environment-controls button span{font-size:10px;white-space:nowrap}
+.environment-controls button i{position:absolute;bottom:3px;width:3px;height:3px;border-radius:50%;background:transparent}
+.environment-controls .fly-resident i{background:#def2ab;box-shadow:0 0 6px #dff2ab}
+.life-location{position:absolute;top:107px;left:24px;right:66px;z-index:3;display:flex;justify-content:space-between;align-items:center;gap:12px;color:#bacdd5}
+.life-location>div:first-child{display:flex;align-items:center;gap:9px;min-width:0}
+.life-kicker{font:7px var(--mono);letter-spacing:1px;color:#728d9c}
+.life-location strong{font-size:11px;font-weight:500;white-space:nowrap}
+#life-activity{font:8px var(--mono);color:#92aab4;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.life-location-actions{display:flex;gap:5px;flex-shrink:0}
+.life-location-actions button{border:1px solid #3b535e;border-radius:5px;background:#14232eee;padding:7px 8px;font-size:9px;color:#c6d6d6}
+.life-location-actions button[aria-pressed=true]{border-color:#667d65;color:#d6e5af}
+.room-caption{position:absolute;z-index:2;bottom:83px;left:24px;pointer-events:none;text-shadow:0 2px 10px #070e16;max-width:calc(100% - 85px)}
+.room-caption>span{font:8px var(--mono);letter-spacing:2px;color:#8dabbd}
+.room-caption h2{font:500 22px Manrope,sans-serif;letter-spacing:-.6px;margin:8px 0;color:#d6e3e6}
+.room-caption p{font-size:9px;color:#9cb2be;margin:0;line-height:1.6}
+.viewport[data-environment=bar] .room-caption>span{color:#c4a17b}
+.viewport .desk-controls,.viewport #playground-controls{top:151px}
+.viewport .training-dock{top:194px;max-height:calc(100% - 220px);overflow:auto}
+.viewport[data-environment=playground] .room-caption{display:none}
+.viewport .view-tools{top:62px}
+.viewport .view-tools button{background:#142330df;border-color:#3c5360;color:#b5c9cd}
+.life-details{font:8px/1.8 var(--mono);color:#93a796;margin:10px 0 0}
+.meter.mood>div{background:#8ab8cb!important}
+#mood-value{font-size:9px;min-width:48px}
+.viewport:fullscreen .room-caption{bottom:91px}
+@media(max-width:1100px){.life-location{align-items:flex-start}.life-location>div:first-child{flex-wrap:wrap;gap:5px 8px}.life-kicker{width:100%}.viewport .environment-controls button{font-size:0;gap:0}.viewport .environment-controls button span{font-size:9px}}
+@media(max-width:620px){
+ .viewport,.viewport[data-environment=playground]{height:660px}
+ .viewport .environment-controls{left:15px;right:49px;top:46px;grid-template-columns:repeat(3,minmax(0,1fr));padding:4px}
+ .viewport .environment-controls button{padding:7px 3px}.viewport .environment-controls button span{font-size:10px}
+ .life-location{left:16px;right:49px;top:124px;flex-direction:column;gap:9px}
+ .life-location>div:first-child{gap:7px}.life-kicker{width:auto;font-size:6px}.life-location strong{font-size:10px}#life-activity{font-size:7px;max-width:110px}
+ .life-location-actions{width:100%;gap:6px}.life-location-actions button{font-size:9px;padding:7px}
+ .viewport .desk-controls,.viewport #playground-controls{top:190px;left:16px}
+ .viewport .training-dock{top:232px;left:16px;max-height:calc(100% - 255px);width:242px}
+ .room-caption{left:16px;bottom:80px}.room-caption h2{font-size:20px}.room-caption p{font-size:8px;max-width:250px}
+ .viewport:fullscreen .room-caption{bottom:194px}
+ .viewport:fullscreen .training-dock{max-height:calc(100dvh - 370px)}
+}
+@media(max-height:550px){.viewport:fullscreen .room-caption{display:none}.viewport:fullscreen .life-kicker,.viewport:fullscreen #life-activity{display:none}.viewport:fullscreen .life-location{top:99px}.viewport:fullscreen #playground-controls,.viewport:fullscreen .desk-controls{top:138px}.viewport:fullscreen .training-dock{top:180px;max-height:calc(100dvh - 195px)}}
