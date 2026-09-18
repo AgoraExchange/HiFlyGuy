@@ -1,4 +1,4 @@
-import { ROOMS, invite } from './life.js';
+import { ROOMS, invite, setDeskFocus } from './life.js';
 import './style.css';
 import './computer-room.css';
 import { Simulation, STIMULI, withinHabitat } from './simulation.js';
@@ -42,7 +42,7 @@ document.querySelector('#app').innerHTML = `
           <div class="scene-top"><div class="specimen-tag"><i class="status-dot"></i><span>FLYGUY <b>/</b> <small>D. melanogaster</small></span></div><span class="scene-code">HABITAT_001</span></div>
           <div class="scene-title"><span class="eyebrow">SMALL WINGS. BIG WORLD.</span><h2>Make yourself<br>at home, little guy.</h2></div>
           <div class="environment-controls" role="group" aria-label="Choose environment">${Object.entries(ROOMS).map(([id, r], i) => `<button data-environment="${id}" aria-pressed="false">0${i + 1} <span>${r.name}</span><i aria-hidden="true"></i></button>`).join('')}</div>
-          <div class="life-location"><div><span class="life-kicker">FLYGUY IS IN</span><strong id="actual-room">Habitat</strong><span id="life-activity">Exploring</span></div><div class="life-location-actions"><button id="find-fly">Find FlyGuy</button><button id="invite-fly">Invite here</button><button id="autonomy-btn" aria-pressed="true" title="Allow FlyGuy to choose his own rooms and routines">Free will: on</button></div></div>
+          <div class="life-location"><div><span class="life-kicker">FLYGUY IS IN</span><strong id="actual-room">Habitat</strong><span id="life-activity">Exploring</span></div><div class="life-location-actions"><button id="find-fly">Find FlyGuy</button><button id="invite-fly">Invite here</button><button id="autonomy-btn" aria-pressed="true" title="Allow FlyGuy to choose his own rooms and routines">Free will: on</button><button id="adderall-btn" aria-pressed="false" hidden title="Send FlyGuy to the desk and work through markets">Adderall: off</button></div></div>
           <div class="room-caption"><span id="room-kicker">01 / HABITAT</span><h2 id="room-title">A room of his own.</h2><p id="room-presence">A little life, unfolding.</p></div>
           ${playgroundControls}
           <div class="desk-controls" id="desk-controls" hidden><button id="watch-screen-btn" aria-pressed="true">Watch screen</button><button id="terminal-btn">Open terminal ${icon('expand')}</button></div>
@@ -120,6 +120,7 @@ function refreshEnvironment() {
   const computer = viewRoom === 'computer';
   habitat?.setEnvironment(viewRoom);
   document.querySelectorAll('button[data-environment]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.environment === viewRoom)));
+  $('#adderall-btn').hidden = !computer;
   $('#desk-controls').hidden = $('#desk-caption').hidden = !computer;
   const playground = viewRoom === 'playground';
   $('#playground-controls').hidden = !playground; $('#training-dock').hidden = !playground || $('#training-toggle').getAttribute('aria-expanded') !== 'true';
@@ -139,7 +140,12 @@ document.querySelectorAll('button[data-environment]').forEach(b => b.onclick = (
 $('#find-fly').onclick = () => { viewEnvironment(sim.environment); habitat?.frame(true); };
 $('#invite-fly').onclick = () => { invite(sim, viewRoom); saveWorld(); toast(paused ? 'Invitation saved. Resume time so he can come over.' : sim.environment === viewRoom ? 'He will stay with you for a little while.' : 'He is on his way. Watch for him at the doorway.'); };
 $('#autonomy-btn').onclick = () => { sim.life.autonomous = !sim.life.autonomous; saveWorld(); updateUI(); toast(sim.life.autonomous ? 'Free to choose his own rooms and routines.' : 'New routines paused. His current visit will finish.'); };
+$('#adderall-btn').onclick = () => {
+  cancelPlacement(); setDeskFocus(sim, !sim.life.deskFocus); saveWorld(); updateUI();
+  toast(sim.life.deskFocus ? (paused ? 'Resume to send FlyGuy to the desk.' : 'Locked in. Markets change every six seconds once he settles.') : 'Desk session finished.');
+};
 $('#watch-screen-btn').onclick = () => {
+  if (sim.life.deskFocus) setDeskFocus(sim, false);
   sim.watchScreen = !sim.watchScreen;
   $('#watch-screen-btn').setAttribute('aria-pressed', String(sim.watchScreen));
   $('#watch-screen-btn').textContent = sim.watchScreen ? 'Watching enabled' : 'Watch screen';
@@ -149,7 +155,7 @@ $('#terminal-btn').onclick = () => {
   const room = habitat?.computerRoom; if (!room) return;
   cancelPlacement(); moveTerminal($('#terminal-mount')); $('#terminal-dialog').showModal(); $('#close-terminal').focus();
 };
-function moveTerminal(parent) { const frame = habitat.computerRoom.iframe; if (parent.moveBefore) parent.moveBefore(frame, null); else parent.append(frame); habitat.computerRoom.setTerminalMode(parent !== habitat.computerRoom.display); }
+function moveTerminal(parent) { const frame = habitat.computerRoom.iframe; frame.contentWindow?.saveMarketState?.(); if (parent.moveBefore) parent.moveBefore(frame, null); else parent.append(frame); habitat.computerRoom.setTerminalMode(parent !== habitat.computerRoom.display); }
 $('#close-terminal').onclick = () => $('#terminal-dialog').close();
 $('#terminal-dialog').addEventListener('close', () => { moveTerminal(habitat.computerRoom.display); $('#terminal-btn').focus(); });
 window.addEventListener('message', e => { if (e.origin === location.origin && e.source === habitat?.computerRoom?.iframe.contentWindow && e.data?.type === 'terminal-escape') $('#terminal-dialog').close(); });
@@ -233,6 +239,7 @@ function updateUI() {
   $('#actual-room').textContent = ROOMS[sim.environment].name;
   $('#life-activity').textContent = sim.life.destination ? 'To ' + ROOMS[sim.life.destination].name : sim.state;
   $('#find-fly').hidden = present; $('#invite-fly').textContent = present ? 'Stay with me' : 'Invite here';
+  $('#adderall-btn').setAttribute('aria-pressed', String(l.deskFocus)); $('#adderall-btn').textContent = l.deskFocus ? 'Adderall: on' : 'Adderall: off';
   $('#autonomy-btn').setAttribute('aria-pressed', String(l.autonomous)); $('#autonomy-btn').textContent = l.autonomous ? 'Free will: on' : 'Free will: off';
   $('#room-presence').textContent = present ? (viewRoom === 'habitat' ? (l.tidiness > .7 ? 'Sheets smoothed. A little place to come home to.' : l.tidiness > .4 ? 'A lived-in room. The sheets can wait.' : 'Rumpled sheets. He has had a long day.') : sim.state + '. A moment in his own little world.') : 'An empty room. He is at the ' + ROOMS[sim.environment].name + '.';
   document.querySelectorAll('button[data-environment]').forEach(b => { b.classList.toggle('fly-resident', b.dataset.environment === sim.environment); });
@@ -268,6 +275,7 @@ function animate(now) {
   requestAnimationFrame(animate); const elapsed = Math.min((now - previous) / 1000, 0.1); previous = now;
   if (!paused && !document.hidden) { accumulator += elapsed * speed; while (accumulator >= 1 / 60) { sim.tick(1 / 60); accumulator -= 1 / 60; } }
   if (sim.time - lastSample >= 0.1) { lastSample = sim.time; history.push({ time: sim.time, ...sim.signals }); history = history.filter(s => sim.time - s.time <= 30); }
+  habitat?.computerRoom?.updateDesk(elapsed, sim, !paused && !document.hidden);
   habitat?.update(sim, !paused); brain?.update(sim);
   if (now - lastUI > 150) { updateUI(); lastUI = now; }
   if (habitat) { const p = habitat.fly.group.position.clone(); p.y += 0.6; p.project(habitat.camera); const x = (p.x * 0.5 + 0.5) * $('#viewport').clientWidth, y = (-p.y * 0.5 + 0.5) * $('#viewport').clientHeight; const el = $('#fly-label'); el.style.left = `${x + 45}px`; el.style.top = `${y - 25}px`; el.style.visibility = sim.environment !== viewRoom || p.z > 1 || x < 0 || x > $('#viewport').clientWidth - 170 || y < 80 || y > $('#viewport').clientHeight - 80 ? 'hidden' : 'visible'; }

@@ -69,3 +69,18 @@ test('Malformed life state, routes, object rooms and viewer rooms are rejected',
     const save = structuredClone(base); mutate(save); assert.equal(decodeSession(JSON.stringify(save)), null);
   }
 });
+
+test('Desk focus travels from every room, holds the desk, saves, and releases without changing free will', async () => {
+  const { setDeskFocus } = await import('../src/life.js');
+  for (const room of Object.keys(ROOMS)) {
+    const sim = new Simulation(); sim.environment = room; sim.life.autonomous = false;
+    setDeskFocus(sim, true); advance(sim, 60);
+    assert.equal(sim.environment, 'computer'); assert.equal(sim.state, 'Locked in');
+    advance(sim, 150); assert.equal(sim.state, 'Locked in');
+    const restored = decodeSession(encodeSession(sim)); assert.ok(restored);
+    assert.equal(restored.sim.life.deskFocus, true);
+    setDeskFocus(sim, false); advance(sim, 1);
+    assert.notEqual(sim.state, 'Locked in'); assert.equal(sim.life.autonomous, false);
+    sim.reset(); assert.equal(sim.life.deskFocus, false);
+  }
+});

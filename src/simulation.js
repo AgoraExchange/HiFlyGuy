@@ -172,7 +172,16 @@ export class Simulation {
     const committed = this.target?.id === food?.id && ['Seeking food', 'Feeding'].includes(previous);
     this.target = null;
     const danger = avoidScore > (previous === 'Avoiding' ? 0.3 : 0.48);
-    if (this.startle > 0) {
+    if (this.life.deskFocus && this.life.route.length && (motion = lifeMotion(this, dt))) {
+      this.state = motion.state; dx = motion.dx; dz = motion.dz; velocity = motion.velocity; desiredY = motion.y;
+    } else if (this.life.deskFocus && this.environment === 'computer' && !this.life.route.length) {
+      dx = -this.x; dz = -8.8 - this.z;
+      if (Math.hypot(dx, dz) < .45) {
+        this.state = 'Locked in'; velocity = 0; desiredY = .87;
+        this.heading += Math.atan2(Math.sin(Math.PI - this.heading), Math.cos(Math.PI - this.heading)) * Math.min(1, dt * 5);
+        this.energy = Math.min(1, this.energy + dt * .003);
+      } else { this.state = 'Approaching screen'; velocity = 2.2; desiredY = 1.4; }
+    } else if (this.startle > 0) {
       this.state = 'Panicking'; const escape = this.escapeDirection(); dx = escape.x; dz = escape.z;
       velocity = SWATTER.escapeSpeed; desiredY = 2.9;
     } else if (groups[1] > 0.3 && danger) {
@@ -217,7 +226,7 @@ export class Simulation {
       if (this.time >= this.waypointUntil || Math.hypot(this.waypoint.x - this.x, this.waypoint.z - this.z) < 0.8) this.chooseWaypoint();
       dx = this.waypoint.x - this.x; dz = this.waypoint.z - this.z;
     }
-    if (!['Panicking', 'Avoiding', 'Feeding', ...LIFE_STATES].includes(this.state) && this.caution > (previous === 'Cautious' ? 0.09 : 0.17)) {
+    if (!this.life.deskFocus && !['Panicking', 'Avoiding', 'Feeding', ...LIFE_STATES].includes(this.state) && this.caution > (previous === 'Cautious' ? 0.09 : 0.17)) {
       this.state = 'Cautious'; velocity = 0.75; desiredY = 1.9;
       if (previous !== 'Cautious' && this.time - this.lastMemoryLog > 12) {
         this.log('I remember this area. Keeping a little distance.', 'memory'); this.lastMemoryLog = this.time;
@@ -225,7 +234,7 @@ export class Simulation {
     }
     if (velocity > 0) {
       const length = Math.hypot(dx ?? 0, dz ?? 1) || 1; dx = (dx ?? 0) / length; dz = (dz ?? 1) / length;
-      if (!['Panicking', 'Avoiding', ...LIFE_STATES].includes(this.state)) for (const m of this.roomMemories()) {
+      if (!this.life.deskFocus && !['Panicking', 'Avoiding', ...LIFE_STATES].includes(this.state)) for (const m of this.roomMemories()) {
         const mx = this.x - m.x, mz = this.z - m.z, distance = Math.hypot(mx, mz);
         const force = m.strength * Math.exp(-distance * distance / 16) * 3.2 * (1 - lure * 0.95);
         dx += (distance > 0.01 ? mx / distance : 1) * force; dz += (distance > 0.01 ? mz / distance : 0) * force;
@@ -246,6 +255,6 @@ export class Simulation {
     }
     if ((this.training.active || this.training.pending) && !TRAINING_STATES.includes(this.state)) cancelLesson(this, 'Something else needs his attention. Try the lesson again when he is settled.');
     this.y += (desiredY + (velocity ? Math.sin(this.time * 3.4) * 0.09 : 0) - this.y) * Math.min(1, dt * 3);
-    if (this.state !== previous && this.state !== 'Cautious') this.log(({ ...Object.fromEntries(LIFE_STATES.map(s => [s, s === 'Heading out' ? `Heading for ${ROOMS[this.life.destination]?.name ?? 'another room'}.` : `${s}.`])), Listening: 'Listening for your cue.', 'Coming when called': this.training.active?.perch === 'you' ? 'Responding to your cue. Coming over to say hello.' : 'Following your call to the landing pad.', 'Practicing flip': 'Practicing a little tumble.', Backflipping: 'A learned backflip, just for you.', 'Waiting for treat': 'Waiting for a little reward.', Perching: 'Settling onto a favorite perch.', 'Finding a perch': 'Looking for a comfortable perch.' })[this.state] ?? (this.state === 'Watching screen' ? 'Front-row seat. Watching the glowing screen.' : this.state === 'Approaching screen' ? 'Heading over to the laptop.' : this.state === 'Panicking' ? 'Swatter nearby! Taking off in a hurry.' : this.state === 'Seeking food' ? `Picked up the scent of ${STIMULI[food.kind].name.toLowerCase()}.` : this.state === 'Feeding' ? 'Landed. A little snack is in order.' : this.state === 'Avoiding' ? 'Strong stimulus detected. Moving away.' : this.state === 'Grooming' ? 'A quiet spot. Landing for a little grooming.' : this.state === 'Resting' ? 'Taking a moment to recharge.' : previous === 'Feeding' && !this.appetite ? 'Full for now. Off to explore.' : 'Off to explore again.'));
+    if (this.state !== previous && this.state !== 'Cautious') this.log(({ ...Object.fromEntries(LIFE_STATES.map(s => [s, s === 'Heading out' ? `Heading for ${ROOMS[this.life.destination]?.name ?? 'another room'}.` : `${s}.`])), Listening: 'Listening for your cue.', 'Coming when called': this.training.active?.perch === 'you' ? 'Responding to your cue. Coming over to say hello.' : 'Following your call to the landing pad.', 'Practicing flip': 'Practicing a little tumble.', Backflipping: 'A learned backflip, just for you.', 'Waiting for treat': 'Waiting for a little reward.', Perching: 'Settling onto a favorite perch.', 'Finding a perch': 'Looking for a comfortable perch.' })[this.state] ?? (this.state === 'Locked in' ? 'Locked in. Working through the markets.' : this.state === 'Watching screen' ? 'Front-row seat. Watching the glowing screen.' : this.state === 'Approaching screen' ? 'Heading over to the laptop.' : this.state === 'Panicking' ? 'Swatter nearby! Taking off in a hurry.' : this.state === 'Seeking food' ? `Picked up the scent of ${STIMULI[food.kind].name.toLowerCase()}.` : this.state === 'Feeding' ? 'Landed. A little snack is in order.' : this.state === 'Avoiding' ? 'Strong stimulus detected. Moving away.' : this.state === 'Grooming' ? 'A quiet spot. Landing for a little grooming.' : this.state === 'Resting' ? 'Taking a moment to recharge.' : previous === 'Feeding' && !this.appetite ? 'Full for now. Off to explore.' : 'Off to explore again.'));
   }
 }

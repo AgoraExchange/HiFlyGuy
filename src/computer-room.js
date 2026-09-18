@@ -37,7 +37,7 @@ export class ComputerRoom {
     this.cssScene = new THREE.Scene();
     this.display = document.createElement('div'); this.display.className = 'laptop-display';
     this.iframe = document.createElement('iframe'); this.iframe.title = 'FlyGuy market terminal — TradingView';
-    this.iframe.addEventListener('load', () => { this.lastTelemetry = -1; this.setTerminalMode(this.iframe.parentElement !== this.display); });
+    this.iframe.addEventListener('load', () => { this.lastTelemetry = -1; this.lastDeskActive = undefined; this.setTerminalMode(this.iframe.parentElement !== this.display); });
     this.iframe.src = `${import.meta.env.BASE_URL}market.html`; this.iframe.tabIndex = -1; this.display.append(this.iframe);
     const surface = new CSS3DObject(this.display); surface.position.copy(screen.position); surface.scale.setScalar(.02); this.cssScene.add(surface);
     this.css = new CSS3DRenderer(); this.css.domElement.className = 'computer-display-layer'; container.prepend(this.css.domElement);
@@ -87,6 +87,26 @@ export class ComputerRoom {
   }
   clickScreen(hit) {
     this.iframe.contentWindow?.postMessage({ type: 'market-pointer', x: hit.uv.x * 825, y: (1 - hit.uv.y) * 495 }, location.origin);
+  }
+  updateDesk(elapsed, sim, running) {
+    const active = sim.life.deskFocus && sim.environment === 'computer' && sim.state === 'Locked in';
+    if (!active) { this.deskElapsed = 0; this.deskStep = -1; this.deskClicked = false; }
+    if (this.lastDeskActive !== (active && running)) {
+      this.lastDeskActive = active && running;
+      this.iframe.contentWindow?.postMessage({ type: 'desk-active', active: this.lastDeskActive }, location.origin);
+      if (active && running && !this.deskClicked) this.deskStep = -1;
+    }
+    if (!active || !running) return;
+    this.deskElapsed = (this.deskElapsed ?? 0) + elapsed;
+    const step = Math.floor(this.deskElapsed / 2);
+    if (step !== this.deskStep) {
+      this.deskStep = step; this.deskClicked = false;
+      this.iframe.contentWindow?.postMessage({ type: 'desk-action', step, click: false }, location.origin);
+    }
+    if (!this.deskClicked && this.deskElapsed % 2 >= .45) {
+      this.deskClicked = true;
+      this.iframe.contentWindow?.postMessage({ type: 'desk-action', step, click: true }, location.origin);
+    }
   }
   update(camera, sim) {
     if (!this.visible) return;

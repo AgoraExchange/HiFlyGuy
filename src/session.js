@@ -4,7 +4,7 @@ import { decodeTraining, TRAINING_STATES } from './training.js';
 
 export const SESSION_KEY = 'hiflyguy.world.v1';
 const scalars = ['time', 'x', 'z', 'y', 'heading', 'energy', 'hunger', 'speed', 'startle', 'nextId', 'nextMemoryId', 'caution', 'waypointUntil', 'lastMemoryLog', 'nextGroomAt', 'groomingUntil', 'distress', 'escapeX', 'escapeZ'];
-const states = ['Exploring', 'Seeking food', 'Feeding', 'Avoiding', 'Resting', 'Cautious', 'Grooming', 'Panicking', 'Approaching screen', 'Watching screen', 'Perching', 'Finding a perch', ...TRAINING_STATES, ...LIFE_STATES];
+const states = ['Locked in', 'Exploring', 'Seeking food', 'Feeding', 'Avoiding', 'Resting', 'Cautious', 'Grooming', 'Panicking', 'Approaching screen', 'Watching screen', 'Perching', 'Finding a perch', ...TRAINING_STATES, ...LIFE_STATES];
 const finite = n => typeof n === 'number' && Number.isFinite(n);
 const between = (n, min, max) => finite(n) && n >= min && n <= max;
 const unit = n => between(n, 0, 1 + 1e-7);

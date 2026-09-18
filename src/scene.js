@@ -84,8 +84,9 @@ export function createFly() {
 const legAxis = vec(0, 1, 0);
 export function animateFly(fly, sim) {
   const grounded = Math.max(0, Math.min(1, (1.12 - (sim.y - (sim.groundHeight?.() ?? 0))) / 0.25));
+  const typing = sim.state === 'Locked in';
   const feeding = sim.state === 'Feeding', grooming = ['Grooming', 'Making the bed'].includes(sim.state), holding = ['Smoking', 'Having a drink'].includes(sim.state);
-  const active = grounded * (feeding || grooming || holding ? 1 : 0), t = sim.time;
+  const active = grounded * (feeding || grooming || holding || typing ? 1 : 0), t = sim.time;
   fly.group.rotation.z = sim.speed ? Math.sin(t * 1.5) * .025 : 0;
   fly.group.rotation.x = feeding ? grounded * (0.035 + Math.sin(t * 5) * 0.012) : 0;
   if (['Practicing flip', 'Backflipping'].includes(sim.state) && sim.training?.active?.phaseAt != null) {
@@ -103,6 +104,7 @@ export function animateFly(fly, sim) {
     const faceSweep = grooming ? Math.max(0, Math.sin(t * 1.5)) * 0.24 : 0;
     const resting = [[0, 0, 0], [side * 0.42, -0.22, 0.25], [side * 0.56, -0.69, 0.55], [side * 0.87, -0.73, 0.77]];
     const rubbing = [[0, 0, 0], [side * 0.24, -0.05 + faceSweep, 0.36], [-side * 0.21, -0.13 + faceSweep + rub * 0.035, 0.72], [-side * 0.28 + rub * 0.025, -0.2 + faceSweep + rub * 0.055, 0.95 + rub * 0.055]];
+    if (typing) { rubbing[1] = [side * .28, -.1, .5]; rubbing[2] = [side * .4, -.4 + Math.sin(t * 15 + side * 2) * .09, 1]; rubbing[3] = [side * .45, -.65 + Math.sin(t * 15 + side * 2) * .12, 1.25]; }
     if (holding) { rubbing[2] = [side * .08, .05 + Math.sin(t * 1.1) * .14, .67]; rubbing[3] = [side * .05, .03 + Math.sin(t * 1.1) * .16, .87]; }
     const points = resting.map((p, i) => vec(...p).lerp(vec(...rubbing[i]), active));
     leg.root.rotation.x *= 1 - active;

@@ -11,7 +11,7 @@ export const LIFE_STATES = ['Heading out', 'Crossing doorway', 'Settling in', 'S
 export const isRoom = room => Object.hasOwn(ROOMS, room);
 const clamp = n => Math.max(0, Math.min(1, n));
 export function newLife() {
-  return { autonomous: true, mood: .7, motivation: .7, stress: .12, tidiness: .8, buzz: 0, smokingHabit: .25, drinkingHabit: .2, cigarettes: 0, drinks: 0, nextDecision: 40, holdUntil: 0, action: null, actionUntil: 0, route: [], destination: null, crossingUntil: 0, visits: 0 };
+  return { autonomous: true, deskFocus: false, mood: .7, motivation: .7, stress: .12, tidiness: .8, buzz: 0, smokingHabit: .25, drinkingHabit: .2, cigarettes: 0, drinks: 0, nextDecision: 40, holdUntil: 0, action: null, actionUntil: 0, route: [], destination: null, crossingUntil: 0, visits: 0 };
 }
 export function routeBetween(from, to) {
   const queue = [[from]], seen = new Set([from]);
@@ -20,6 +20,7 @@ export function routeBetween(from, to) {
 }
 export function invite(sim, room) {
   if (!isRoom(room)) return false;
+  if (room !== 'computer') sim.life.deskFocus = false;
   sim.cancelLesson(); sim.putAwaySwatter();
   const l = sim.life; l.action = null; l.crossingUntil = 0; l.route = routeBetween(sim.environment, room); l.destination = l.route.length ? room : null; l.holdUntil = sim.time + 120; l.nextDecision = sim.time + 22;
   sim.log(room === sim.environment ? 'Staying here for a little while with you.' : `An invitation to ${ROOMS[room].name}. Heading over.`);
@@ -72,6 +73,7 @@ export function lifeMotion(sim, dt) {
     }
     return { state: 'Crossing doorway', velocity: 0, y: 1.8 };
   }
+  if (l.deskFocus && sim.environment === 'computer') return null;
   if (!l.action && sim.time >= l.nextDecision && l.autonomous) {
     l.nextDecision = sim.time + 22;
     const staying = sim.time < l.holdUntil;
@@ -107,7 +109,8 @@ export function lifeMotion(sim, dt) {
 }
 export function decodeLife(value, environment) {
   if (value === undefined) return newLife();
-  const l = value;
+  const l = { ...value, deskFocus: value?.deskFocus ?? false };
+  if (typeof l.deskFocus !== 'boolean') return null;
   if (!l || typeof l.autonomous !== 'boolean') return null;
   for (const key of ['mood', 'motivation', 'stress', 'tidiness', 'buzz', 'smokingHabit', 'drinkingHabit']) if (!Number.isFinite(l[key]) || l[key] < 0 || l[key] > 1) return null;
   for (const key of ['cigarettes', 'drinks', 'visits']) if (!Number.isSafeInteger(l[key]) || l[key] < 0) return null;
@@ -118,4 +121,10 @@ export function decodeLife(value, environment) {
   if (l.action !== null && l.action !== ROOMS[environment].action && !(environment === 'habitat' && l.action === 'Making the bed')) return null;
   if (l.route.length && l.action || l.crossingUntil && !l.route.length) return null;
   return Object.fromEntries(Object.keys(newLife()).map(key => [key, key === 'route' ? [...l.route] : l[key]]));
+}
+
+export function setDeskFocus(sim, enabled) {
+  sim.life.deskFocus = enabled;
+  if (enabled) { invite(sim, 'computer'); sim.watchScreen = true; }
+  else { sim.life.holdUntil = sim.time; sim.life.nextDecision = sim.time + 5; }
 }
