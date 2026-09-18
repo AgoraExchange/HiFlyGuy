@@ -9,7 +9,7 @@ test('Portfolio uses market quotes, navigates details and allocation, and fits m
   await quotes(page);await page.goto('/market.html');await page.locator('#portfolio-btn').click();
   await expect(page.locator('#wallet-total')).toHaveText('$16,620.50');
   await expect(page.locator('#wallet-source')).toHaveAttribute('data-state','live');
-  await expect(page.locator('#portfolio')).toContainText('Demo portfolio');
+  await expect(page.locator('#portfolio')).toContainText('ASTER WALLET');
   await expect(page.locator('.wallet-chart svg')).toBeVisible();
   await page.locator('[data-asset="BTC"]').click();await expect(page.locator('.wallet-balance')).toHaveText('$70,000.00');
   await page.locator('#wallet-allocation').click();await expect(page.locator('.wallet-ring')).toBeVisible();

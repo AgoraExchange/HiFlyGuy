@@ -60,8 +60,18 @@ try {
   const terminal = page.frameLocator('#terminal-mount iframe');
   await terminal.locator('#portfolio-btn').click();
   await terminal.locator('#portfolio:not([hidden])').waitFor();
-  assert.match(await terminal.locator('#portfolio').textContent(), /Demo portfolio/);
+  assert.match(await terminal.locator('#portfolio').textContent(), /ASTER WALLET/);
   assert.equal(await terminal.locator('#wallet-total').textContent(), '\u2014');
+  await page.locator('#close-terminal').click();
+  await page.locator('#director-btn').click();
+  await page.locator('#director-actions-btn').click();
+  await page.locator('#maybach-action').click();
+  await page.locator('#director-cinema:not([hidden])').waitFor();
+  const cinematic = page.frameLocator('iframe[title="Aster Wallet cinematic display"]');
+  await cinematic.locator('#portfolio:not([hidden])').waitFor();
+  assert.match(await cinematic.locator('#portfolio').textContent(), /ASTER WALLET/);
+  await page.keyboard.press('Escape');
+  await page.locator('#director-return').click();
   assert.deepEqual(errors, []);
-  console.log('PASS: mobile render, scoped paths, no-update check, update/restart, saved world, offline reopen, offline status, market path, offline portfolio modules');
+  console.log('PASS: mobile render, scoped paths, no-update check, update/restart, saved world, offline reopen, offline status, market path, offline portfolio modules, offline director scene');
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

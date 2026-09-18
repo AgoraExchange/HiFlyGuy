@@ -7,6 +7,7 @@ import { loadSession, saveSession } from './session.js';
 import { playgroundControls, setupTrainingUI, updateTrainingUI } from './training-ui.js';
 import './life.css';
 import { setupUpdates } from './pwa.js';
+import { setupDirector } from './director.js';
 
 const icons = {
   fly: '<path d="M12 9v10m0-9C5-2-3 9 10 12m2-2c7-12 15-1 2 2M9 16l-4 4m10-4 4 4M9 13l-6 1m12-1 6 1M10 6 8 3m6 3 2-3"/><ellipse cx="12" cy="14" rx="3" ry="5"/>',
@@ -16,6 +17,7 @@ const icons = {
   arrow: '<path d="M5 12h14m-5-5 5 5-5 5"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   focus: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><circle cx="12" cy="12" r="4"/>',
+  clapper: '<path d="M3 10h18v11H3zM3 10 2 5l17-3 1 5zM7 4l3 4m3-5 3 4M8 14l6 3-6 3z"/>',
   reset: '<path d="M3 10a9 9 0 1 1 1 7M3 4v6h6"/>',
   pause: '<path d="M9 5v14m6-14v14"/>',
   play: '<path d="m8 4 12 8-12 8z"/>',
@@ -48,7 +50,7 @@ document.querySelector('#app').innerHTML = `
           <div class="desk-controls" id="desk-controls" hidden><button id="watch-screen-btn" aria-pressed="true">Watch screen</button><button id="terminal-btn">Open terminal ${icon('expand')}</button></div>
           <div class="desk-caption" id="desk-caption" hidden><span>NIGHT DESK / MARKET OBSERVATORY</span><p>A little fly. A very big screen.</p><small>Watching is a simulated activity. Market data is separate.</small></div>
           <dialog id="terminal-dialog" aria-labelledby="terminal-title"><div class="terminal-dialog-head"><span id="terminal-title">FLYGUY / MARKET TERMINAL</span><button id="close-terminal" aria-label="Close market terminal">${icon('close')}</button></div><div id="terminal-mount"></div></dialog>
-          <div class="view-tools"><button id="focus-btn" title="Follow FlyGuy up close" aria-label="Follow FlyGuy up close" aria-pressed="false">${icon('focus')}</button><button id="scent-btn" title="Show scent fields" aria-label="Show scent fields" aria-pressed="false">${icon('scent')}</button><button id="camera-btn" title="Reset camera" aria-label="Reset camera">${icon('reset')}</button><button id="fullscreen-btn" title="Fullscreen habitat" aria-label="Fullscreen habitat">${icon('expand')}</button><button id="remove-selected-btn" title="Remove selected object" aria-label="Remove selected object" hidden>${icon('trash')}</button><button id="memory-btn" title="Show remembered areas" aria-label="Show remembered areas" aria-pressed="true" class="active">${icon('brain')}</button></div>
+          <div class="view-tools"><button id="focus-btn" title="Follow FlyGuy up close" aria-label="Follow FlyGuy up close" aria-pressed="false">${icon('focus')}</button><button id="scent-btn" title="Show scent fields" aria-label="Show scent fields" aria-pressed="false">${icon('scent')}</button><button id="camera-btn" title="Reset camera" aria-label="Reset camera">${icon('reset')}</button><button id="fullscreen-btn" title="Fullscreen habitat" aria-label="Fullscreen habitat">${icon('expand')}</button><button id="remove-selected-btn" title="Remove selected object" aria-label="Remove selected object" hidden>${icon('trash')}</button><button id="memory-btn" title="Show remembered areas" aria-label="Show remembered areas" aria-pressed="true" class="active">${icon('brain')}</button><button id="director-actions-btn" title="Actions" aria-label="Director actions" aria-haspopup="dialog" hidden>${icon('clapper')}</button></div>
           <div id="selection-label" class="selection-label" hidden></div>
           <div class="placement-banner" id="placement-banner" hidden><span id="placement-message"></span><button id="place-center">Place near FlyGuy</button><button id="cancel-placement" aria-label="Cancel placement">${icon('close')}</button></div>
           <div class="swatter-banner" id="swatter-banner" hidden><div><strong>FLY SWATTER</strong><span id="swatter-status">Move over the habitat to guide it.</span></div><span id="distress-value">Distress 0%</span><button id="put-away-swatter">Put away <kbd>Esc</kbd></button></div>
@@ -61,7 +63,7 @@ document.querySelector('#app').innerHTML = `
             <div class="inventory-slots">${Object.entries(STIMULI).map(([kind, o], i) => `<button class="inventory-slot" data-stimulus="${kind}" aria-label="Inventory: ${o.name.toLowerCase()}" aria-pressed="false" title="${o.name} (${i + 1})"><kbd>${i + 1}</kbd><div class="food-art">${foodArt(kind)}</div><span>${o.name}</span></button>`).join('')}<button class="inventory-slot" data-tool="swatter" aria-label="Inventory: fly swatter" aria-pressed="false" title="Fly Swatter (4)"><kbd>4</kbd><div class="food-art">${swatterArt}</div><span>Fly Swatter</span></button>${[5, 6].map(i => `<div class="inventory-slot empty" aria-label="Empty inventory slot ${i}"><kbd>${i}</kbd><span>—</span></div>`).join('')}</div>
           </div>
         </section>
-        <div class="playback"><div class="playback-left"><button class="play-button" id="pause-btn" aria-label="Pause simulation">${icon('pause')}</button><span id="playback-status">Simulation running</span><span class="playback-divider"></span><div class="speed-control" aria-label="Simulation speed"><button data-speed="0.5">½×</button><button data-speed="1" class="active">1×</button><button data-speed="2">2×</button></div></div><button class="quiet-btn reset-world" id="reset-btn">${icon('reset')} Reset world</button></div>
+        <div class="playback"><div class="playback-left"><button class="play-button" id="pause-btn" aria-label="Pause simulation">${icon('pause')}</button><span id="playback-status">Simulation running</span><span class="playback-divider"></span><div class="speed-control" aria-label="Simulation speed"><button data-speed="0.5">½×</button><button data-speed="1" class="active">1×</button><button data-speed="2">2×</button></div></div><div class="playback-actions"><button class="quiet-btn" id="director-btn" aria-pressed="false">${icon('clapper')} Directors mode</button><button class="quiet-btn reset-world" id="reset-btn">${icon('reset')} Reset world</button></div></div>
         <section class="interaction-section"><div class="section-heading"><div><span class="eyebrow">A LITTLE CURIOSITY GOES A LONG WAY</span><h2>Put something in his world.</h2></div><span class="step-label">SELECT → PLACE → OBSERVE</span></div><div class="stimulus-cards">${Object.entries(STIMULI).map(([kind, o]) => `<button class="stimulus-card" data-stimulus="${kind}" aria-label="Place ${o.name.toLowerCase()}"><div class="food-art ${kind}">${foodArt(kind)}</div><div class="stimulus-copy"><strong>${o.name}</strong><span>${o.description}</span><small><i style="background:${o.color}"></i>${o.response}</small></div><span class="add-circle">${icon('plus')}</span></button>`).join('')}</div><button class="swatter-launch" data-tool="swatter" aria-label="Use fly swatter" aria-pressed="false"><div class="food-art">${swatterArt}</div><span><strong>Fly Swatter</strong><small>A little chase. He always gets away.</small></span><kbd>4</kbd></button><div class="objects-footer"><span><i class="tiny-dot"></i> <span id="object-count">0 objects</span> in this room <span class="muted">/ 8 max</span></span><button class="text-button" id="clear-btn" disabled>Clear objects</button></div><div id="object-list" class="object-list"></div></section>
       </div>
       <aside class="telemetry">
@@ -81,6 +83,7 @@ const $ = s => document.querySelector(s);
 let storage; try { storage = window.localStorage; } catch { /* Private browser settings may disable storage. */ }
 const restored = loadSession(storage), sim = restored?.sim ?? new Simulation();
 let viewRoom = restored?.viewRoom ?? sim.environment, lastResidence = sim.environment;
+let director;
 let habitat, brain, paused = restored?.paused ?? false, speed = restored?.speed ?? 1, placing = null, swatterEquipped = false, selectedId = null, history = [], lastSample = sim.time, lastUI = -1, toastTimer, logSignature = '', dialogMode;
 function saveWorld() {
   const saved = saveSession(storage, sim, { paused, speed, viewRoom });
@@ -160,6 +163,7 @@ $('#close-terminal').onclick = () => $('#terminal-dialog').close();
 $('#terminal-dialog').addEventListener('close', () => { moveTerminal(habitat.computerRoom.display); $('#terminal-btn').focus(); });
 window.addEventListener('message', e => { if (e.origin === location.origin && e.source === habitat?.computerRoom?.iframe.contentWindow && e.data?.type === 'terminal-escape') $('#terminal-dialog').close(); });
 refreshEnvironment();
+director = setupDirector({ viewport: $('#viewport'), prepare: () => { cancelPlacement(); selectObject(null); $('#dialog').close(); $('#terminal-dialog').close(); saveWorld(); } });
 
 function selectStimulus(kind) {
   if (!habitat) return toast('Enable WebGL to place objects in the 3D habitat.');
@@ -216,6 +220,7 @@ $('#close-dialog').onclick = () => $('#dialog').close();
 $('#dialog').addEventListener('click', e => { if (e.target === $('#dialog')) { const r = $('#dialog').getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) $('#dialog').close(); } });
 document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { $('#dialog').close(); $('#viewport').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
 document.addEventListener('keydown', e => {
+  if (director?.busy) return;
   const editing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable;
   if (e.key === 'Escape') { cancelPlacement(); selectObject(null); }
   if ($('#dialog').open || $('#terminal-dialog').open || editing || e.repeat) return;
@@ -272,7 +277,8 @@ function updateUI() {
 }
 let previous = performance.now(), accumulator = 0;
 function animate(now) {
-  requestAnimationFrame(animate); const elapsed = Math.min((now - previous) / 1000, 0.1); previous = now;
+  requestAnimationFrame(animate); const rawElapsed = Math.max(0, (now - previous) / 1000), elapsed = Math.min(rawElapsed, 0.1); previous = now;
+  if (director?.busy) { director.update(); return; }
   if (!paused && !document.hidden) { accumulator += elapsed * speed; while (accumulator >= 1 / 60) { sim.tick(1 / 60); accumulator -= 1 / 60; } }
   if (sim.time - lastSample >= 0.1) { lastSample = sim.time; history.push({ time: sim.time, ...sim.signals }); history = history.filter(s => sim.time - s.time <= 30); }
   habitat?.computerRoom?.updateDesk(elapsed, sim, !paused && !document.hidden);

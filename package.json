@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "An interactive 3D fly habitat with a synthetic neural controller",
   "scripts": {
-    "test": "node --test tests/simulation.test.js tests/session.test.js tests/animation.test.js tests/training.test.js tests/life.test.js tests/portfolio.test.js",
+    "test": "node --test tests/simulation.test.js tests/session.test.js tests/animation.test.js tests/training.test.js tests/life.test.js tests/portfolio.test.js tests/director.test.js",
     "dev": "vite --configLoader native --host 127.0.0.1",
     "build": "vite build --configLoader native",
     "preview": "vite preview --configLoader native --host 127.0.0.1",

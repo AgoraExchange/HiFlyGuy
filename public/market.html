@@ -10,11 +10,13 @@
 <nav class="chart-tools" aria-label="Chart controls"><button data-style="1" aria-pressed="true">Candles</button><button data-style="2" aria-pressed="false">Line</button><button data-style="3" aria-pressed="false">Area</button><button data-study="MASimple@tv-basicstudies" aria-pressed="false">MA</button><button data-study="StochasticRSI@tv-basicstudies" aria-pressed="false">Stoch RSI</button><button data-study="ROC@tv-basicstudies" aria-pressed="false">ROC</button><button id="clear-studies">Clear indicators</button></nav><div id="desk-cursor" class="desk-cursor" hidden aria-hidden="true">&#10148; <small>FLYGUY</small></div>
 <main><div class="chart-host" id="chart-host"></div><div class="feed-status" id="feed-status" role="status"><div class="orb">↗</div><small>MARKET OBSERVATORY</small><strong id="status-title">Connecting to TradingView</strong><p id="status-copy">Opening the market feed. Your little observer has a front-row seat.</p><div class="feed-links"><button id="retry" hidden>Reconnect</button><a id="fallback-link" href="https://www.tradingview.com/symbols/BTCUSD/" target="_blank" rel="noopener noreferrer">Open on TradingView ↗</a></div></div></main>
 <div class="credit"><a id="credit-link" href="https://www.tradingview.com/symbols/BTCUSD/" target="_blank" rel="noopener nofollow">BTCUSD chart by TradingView</a><span id="feed-label">External market feed · connecting</span></div>
-<footer><div><small>FLYGUY ACTIVITY</small><b id="activity">Awaiting observer</b></div><div><small>ENERGY</small><b id="energy">—</b></div><div><small>SESSION</small><b id="session">00:00</b></div><div class="pulse" id="pulse"></div><span>SIMULATED PET TELEMETRY<br>Market data is separate.</span></footer>
+<footer><div><small>FLYGUY ACTIVITY</small><b id="activity">Awaiting observer</b></div><div><small>ENERGY</small><b id="energy">—</b></div><div><small>SESSION</small><b id="session">00:00</b></div><div class="pulse" id="pulse"></div><span>NIGHT DESK<br>MARKET OBSERVATORY</span></footer>
 <script type="module">
 import { createPortfolio } from "./portfolio.js";
 const $ = s => document.querySelector(s);
 const portfolio = createPortfolio(document.querySelector("main"));
+const cinematicWallet = new URLSearchParams(location.search).has("director");
+if (cinematicWallet) { document.body.classList.add("director-wallet-mode"); portfolio.show(true); }
 $("#portfolio-btn").onclick = () => portfolio.show(!portfolio.visible);
 let generation = 0, timer, observer;
 const names = { 'BITSTAMP:BTCUSD': ['BTCUSD', 'BTCUSD'], 'COINBASE:ETHUSD': ['ETHUSD', 'ETHUSD'], 'KRAKEN:XMRUSD': ['XMRUSD', 'XMRUSD'], 'NASDAQ:AAPL': ['AAPL', 'NASDAQ-AAPL'], 'NASDAQ:NVDA': ['NVDA', 'NASDAQ-NVDA'] };
@@ -131,5 +133,5 @@ window.addEventListener('message', e => {
   [...$('#pulse').children].forEach((bar,i) => bar.style.height = (3 + Object.values(d.signals)[i%4]*24 + (Math.sin(d.time*3+i)+1)*3)+'px');
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') parent.postMessage({ type: 'terminal-escape' }, location.origin); });
-mount();
+if (!cinematicWallet) mount();
 </script></body></html>
