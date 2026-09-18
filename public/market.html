@@ -5,14 +5,17 @@
 .scene-market{position:relative}.scene-market[hidden],#symbol[hidden]{display:none}.scene-market>button{min-width:140px;text-align:left;color:#91ebe0}.scene-market>button::after{content:' ▾';float:right;margin-left:16px}.market-menu{position:absolute;top:calc(100% + 7px);left:0;min-width:190px;padding:5px;background:#122638;border:1px solid #527e8e;border-radius:6px;box-shadow:0 8px 25px #0009;z-index:20}.market-menu[hidden]{display:none}.market-menu button{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 12px}.market-menu button:hover,.market-menu button[aria-selected=true]{background:#254550;color:#8aeee0}header{position:relative;z-index:2}
 .chart-host{position:relative}.chart-host>.tradingview-widget-container{position:absolute;inset:0}.chart-host>.pending-chart{opacity:0;pointer-events:none}
 .chart-tools{display:flex;flex-wrap:wrap;gap:5px;padding:7px 14px;border-bottom:1px solid #243748}.chart-tools button{font-size:10px}.chart-tools button[aria-pressed=true]{color:#85f4dd;border-color:#54b6ac;background:#1b3a40}.chart-tools button.fly-click{box-shadow:0 0 14px #61eed8;background:#39756f}.desk-cursor{position:fixed;left:0;top:0;z-index:100;pointer-events:none;color:#8dffe4;font-size:23px;text-shadow:0 1px 5px #000;transition:transform .4s ease}.desk-cursor small{font-size:8px;background:#183f40;padding:4px;border-radius:3px;white-space:nowrap}.desk-cursor[hidden]{display:none}header{flex-wrap:wrap}
-</style></head><body>
-<header><strong>FLYGUY / TERMINAL</strong><select id="symbol" aria-label="Market symbol"><option value="BITSTAMP:BTCUSD">BTC / USD</option><option value="COINBASE:ETHUSD">ETH / USD</option><option value="NASDAQ:AAPL">Apple · AAPL</option><option value="NASDAQ:NVDA">NVIDIA · NVDA</option></select><small>NIGHT DESK · 03</small></header>
-<nav class="chart-tools" aria-label="Chart controls"><button data-style="1" aria-pressed="true">Candles</button><button data-style="2" aria-pressed="false">Line</button><button data-style="3" aria-pressed="false">Area</button><button data-study="MASimple@tv-basicstudies" aria-pressed="false">MA</button><button data-study="StochasticRSI@tv-basicstudies" aria-pressed="false">Stoch RSI</button><button data-study="ROC@tv-basicstudies" aria-pressed="false">ROC</button><button id="clear-studies">Clear indicators</button></nav><div id="desk-cursor" class="desk-cursor" hidden aria-hidden="true">? <small>FLYGUY</small></div>
+</style><link rel="stylesheet" href="./portfolio.css"></head><body>
+<header><strong>FLYGUY / TERMINAL</strong><select id="symbol" aria-label="Market symbol"><option value="BITSTAMP:BTCUSD">BTC / USD</option><option value="COINBASE:ETHUSD">ETH / USD</option><option value="NASDAQ:AAPL">Apple · AAPL</option><option value="NASDAQ:NVDA">NVIDIA · NVDA</option></select><button id="portfolio-btn" aria-pressed="false">Portfolio</button><small>NIGHT DESK · 03</small></header>
+<nav class="chart-tools" aria-label="Chart controls"><button data-style="1" aria-pressed="true">Candles</button><button data-style="2" aria-pressed="false">Line</button><button data-style="3" aria-pressed="false">Area</button><button data-study="MASimple@tv-basicstudies" aria-pressed="false">MA</button><button data-study="StochasticRSI@tv-basicstudies" aria-pressed="false">Stoch RSI</button><button data-study="ROC@tv-basicstudies" aria-pressed="false">ROC</button><button id="clear-studies">Clear indicators</button></nav><div id="desk-cursor" class="desk-cursor" hidden aria-hidden="true">&#10148; <small>FLYGUY</small></div>
 <main><div class="chart-host" id="chart-host"></div><div class="feed-status" id="feed-status" role="status"><div class="orb">↗</div><small>MARKET OBSERVATORY</small><strong id="status-title">Connecting to TradingView</strong><p id="status-copy">Opening the market feed. Your little observer has a front-row seat.</p><div class="feed-links"><button id="retry" hidden>Reconnect</button><a id="fallback-link" href="https://www.tradingview.com/symbols/BTCUSD/" target="_blank" rel="noopener noreferrer">Open on TradingView ↗</a></div></div></main>
 <div class="credit"><a id="credit-link" href="https://www.tradingview.com/symbols/BTCUSD/" target="_blank" rel="noopener nofollow">BTCUSD chart by TradingView</a><span id="feed-label">External market feed · connecting</span></div>
 <footer><div><small>FLYGUY ACTIVITY</small><b id="activity">Awaiting observer</b></div><div><small>ENERGY</small><b id="energy">—</b></div><div><small>SESSION</small><b id="session">00:00</b></div><div class="pulse" id="pulse"></div><span>SIMULATED PET TELEMETRY<br>Market data is separate.</span></footer>
-<script>
+<script type="module">
+import { createPortfolio } from "./portfolio.js";
 const $ = s => document.querySelector(s);
+const portfolio = createPortfolio(document.querySelector("main"));
+$("#portfolio-btn").onclick = () => portfolio.show(!portfolio.visible);
 let generation = 0, timer, observer;
 const names = { 'BITSTAMP:BTCUSD': ['BTCUSD', 'BTCUSD'], 'COINBASE:ETHUSD': ['ETHUSD', 'ETHUSD'], 'KRAKEN:XMRUSD': ['XMRUSD', 'XMRUSD'], 'NASDAQ:AAPL': ['AAPL', 'NASDAQ-AAPL'], 'NASDAQ:NVDA': ['NVDA', 'NASDAQ-NVDA'] };
 const symbolSelect = $('#symbol');
@@ -25,6 +28,7 @@ try {
   if (['1','2','3'].includes(saved.style)) chartStyle = saved.style;
   if (Array.isArray(saved.studies)) studies = studyIds.filter(id => saved.studies.includes(id));
 } catch { /* A blocked or old storage entry must not stop the terminal. */ }
+window.saveMarketState = saveMarketState;
 function saveMarketState() {
   const state = JSON.stringify({symbol:symbolSelect.value, style:chartStyle, studies});
   if (window.frameElement) window.frameElement.dataset.marketState = state;
@@ -42,13 +46,18 @@ function deskAction(step, click) {
   if (!deskActive || !Number.isSafeInteger(step) || step < 0) return;
   if (!click) {
     document.querySelectorAll('.fly-click').forEach(b => b.classList.remove('fly-click'));
-    const phase = step % 3, cycle = Math.floor(step / 3);
-    if (phase === 0) {
+    const slot = step % 18;
+    const chartStep = Math.floor(step / 18) * 12 + slot;
+    const phase = chartStep % 3, cycle = Math.floor(chartStep / 3);
+    if (slot >= 12) {
+      closeMarketMenu(); actionTarget = portfolio.actionTarget(slot - 12);
+    } else if (phase === 0) {
       sceneMarket.hidden = false; symbolSelect.hidden = true;
       marketMenu.hidden = false; marketButton.setAttribute('aria-expanded','true');
       actionTarget = marketMenu.children[(symbolSelect.selectedIndex + 1) % symbolSelect.options.length];
     } else if (phase === 1) actionTarget = document.querySelector('[data-style="' + ({'1':'2','2':'3','3':'1'}[chartStyle]) + '"]');
     else actionTarget = cycle % 2 ? $('#clear-studies') : document.querySelector('[data-study="' + studyIds[Math.floor(cycle / 2) % studyIds.length] + '"]');
+    if (!actionTarget) return;
     const r = actionTarget.getBoundingClientRect();
     $('#desk-cursor').style.transform = 'translate(' + (r.x+r.width*.65) + 'px,' + (r.y+r.height*.6) + 'px)';
   } else if (actionTarget && lastAction !== step) {
@@ -99,6 +108,7 @@ $('#retry').onclick = mount; $('#symbol').onchange = () => { updateMarketMenu();
 for (let i=0;i<24;i++) $('#pulse').append(document.createElement('i'));
 window.addEventListener('message', e => {
   if (e.origin !== location.origin || e.source !== parent) return;
+  if (e.data?.type === 'desk-view') { portfolio.show(e.data.wallet === true); closeMarketMenu(); return; }
   if (e.data?.type === 'desk-active') {
     const next = e.data.active === true;
     if (deskActive && !next) { setMarketMode(terminalExpanded); actionTarget = null; document.querySelectorAll('.fly-click').forEach(b => b.classList.remove('fly-click')); }
@@ -110,7 +120,7 @@ window.addEventListener('message', e => {
   if (e.data?.type === 'market-mode') { setMarketMode(e.data.expanded === true); return; }
   if (e.data?.type === 'market-pointer') {
     const {x, y} = e.data;
-    if (sceneMarket.hidden || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return;
+    if ((!portfolio.visible && sceneMarket.hidden) || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return;
     const button = document.elementFromPoint(x, y)?.closest('button');
     if (button) button.click(); else closeMarketMenu();
     return;

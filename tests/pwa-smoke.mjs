@@ -54,6 +54,14 @@ try {
   await page.locator('[data-environment="computer"]').click();
   await page.waitForFunction(() => !!document.querySelector('iframe[src="./market.html"]'));
   assert.equal(new URL(await page.locator('iframe[src="./market.html"]').getAttribute('src'), page.url()).pathname, '/HiFlyGuy/market.html');
+  await context.setOffline(true);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('#terminal-btn').click();
+  const terminal = page.frameLocator('#terminal-mount iframe');
+  await terminal.locator('#portfolio-btn').click();
+  await terminal.locator('#portfolio:not([hidden])').waitFor();
+  assert.match(await terminal.locator('#portfolio').textContent(), /Demo portfolio/);
+  assert.equal(await terminal.locator('#wallet-total').textContent(), '\u2014');
   assert.deepEqual(errors, []);
-  console.log('PASS: mobile render, scoped paths, no-update check, update/restart, saved world, offline reopen, offline status, market path');
+  console.log('PASS: mobile render, scoped paths, no-update check, update/restart, saved world, offline reopen, offline status, market path, offline portfolio modules');
 } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

@@ -11,7 +11,7 @@ export function pwaBuild() {
       const template = await readFile(new URL('./sw-template.js', import.meta.url), 'utf8');
       const hash = createHash('sha256').update(template);
       for (const name of assets) hash.update(name).update(bundle[name].code ?? bundle[name].source);
-      for (const name of ['manifest.webmanifest', 'market.html', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png']) {
+      for (const name of ['manifest.webmanifest', 'market.html', 'portfolio.js', 'portfolio.css', 'portfolio-data.js', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png']) {
         hash.update(await readFile(new URL(`../public/${name}`, import.meta.url)));
         assets.push(name);
       }

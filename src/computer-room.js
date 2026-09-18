@@ -37,7 +37,7 @@ export class ComputerRoom {
     this.cssScene = new THREE.Scene();
     this.display = document.createElement('div'); this.display.className = 'laptop-display';
     this.iframe = document.createElement('iframe'); this.iframe.title = 'FlyGuy market terminal — TradingView';
-    this.iframe.addEventListener('load', () => { this.lastTelemetry = -1; this.lastDeskActive = undefined; this.setTerminalMode(this.iframe.parentElement !== this.display); });
+    this.iframe.addEventListener('load', () => { this.lastTelemetry = -1; this.lastDeskActive = undefined; this.lastDeskView = undefined; this.setTerminalMode(this.iframe.parentElement !== this.display); });
     this.iframe.src = `${import.meta.env.BASE_URL}market.html`; this.iframe.tabIndex = -1; this.display.append(this.iframe);
     const surface = new CSS3DObject(this.display); surface.position.copy(screen.position); surface.scale.setScalar(.02); this.cssScene.add(surface);
     this.css = new CSS3DRenderer(); this.css.domElement.className = 'computer-display-layer'; container.prepend(this.css.domElement);
@@ -93,11 +93,16 @@ export class ComputerRoom {
     if (!active) { this.deskElapsed = 0; this.deskStep = -1; this.deskClicked = false; }
     if (this.lastDeskActive !== (active && running)) {
       this.lastDeskActive = active && running;
-      this.iframe.contentWindow?.postMessage({ type: 'desk-active', active: this.lastDeskActive }, location.origin);
+      this.iframe.contentWindow?.postMessage({ type: 'desk-active', active: this.lastDeskActive, enabled: active }, location.origin);
       if (active && running && !this.deskClicked) this.deskStep = -1;
     }
+    if (active && running) this.deskElapsed = (this.deskElapsed ?? 0) + elapsed;
+    const wallet = active && (this.deskElapsed ?? 0) % 36 >= 24;
+    if (this.lastDeskView !== wallet) {
+      this.lastDeskView = wallet;
+      this.iframe.contentWindow?.postMessage({ type: 'desk-view', wallet }, location.origin);
+    }
     if (!active || !running) return;
-    this.deskElapsed = (this.deskElapsed ?? 0) + elapsed;
     const step = Math.floor(this.deskElapsed / 2);
     if (step !== this.deskStep) {
       this.deskStep = step; this.deskClicked = false;
