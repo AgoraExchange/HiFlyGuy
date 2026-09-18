@@ -51,3 +51,6 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 
 .app-updates{display:flex;flex-direction:column;gap:6px;max-width:260px}.app-updates button{min-height:44px;text-align:left}.app-updates [role=status]{font-size:11px;line-height:1.5;color:var(--muted)}body{padding-bottom:env(safe-area-inset-bottom)}@media(display-mode:standalone){body{padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}}
+
+/* Keep the neural panel within narrow phone layouts. */
+@media(max-width:620px){.telemetry{grid-template-columns:minmax(0,1fr)}.telemetry>section{min-width:0}.neural-subhead{flex-wrap:wrap;gap:8px}.network-stats{gap:clamp(16px,8vw,40px)}.panel-heading h2{min-width:0}.panel-heading>.status-dot{flex-shrink:0}}

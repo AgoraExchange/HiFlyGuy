@@ -47,8 +47,10 @@ export class DirectorStage {
     box([8,1.2,3],[0,.7,0],cream,couch);box([8,2.1,.6],[0,1.9,1.3],cream,couch);
     for(const side of [-1,1])box([.6,1.8,3],[side*3.8,1.5,0],cream,couch);
     for(const x of [-2.5,0,2.5])box([2.35,.35,2.4],[x,1.43,-.1],mat('#a19b8c'),couch);
-    box([7,.035,6],[-7,.02,5],mat('#26363a'));box([4.5,.2,2.4],[-2,1.1,3],mat('#84898c',.35,.3));
-    for(const x of [-3.8,-.2])box([.13,1,1.8],[x,.5,3],bronze);
+    box([9,.035,8],[-8,.02,3.6],mat('#26363a'));
+    const coffeeTable=new T.Group();coffeeTable.position.set(-8,0,1.2);this.scene.add(coffeeTable);
+    box([4.5,.2,2.4],[0,1.1,0],mat('#84898c',.35,.3),coffeeTable);
+    for(const x of [-1.8,1.8])box([.13,1,1.8],[x,.5,0],bronze,coffeeTable);
     cylinder(.7,.08,[-13,.05,3],black);cylinder(.055,6,[-13,3,3],bronze);cylinder(.9,.7,[-13,6,3],cream);light('#ffd493',40,[-13,5.5,3],18);
     const art=box([.15,5,5],[-16.7,5,1],bronze);box([.16,4.7,4.7],[-16.58,5,1],mat('#1b2737'));
     for(let i=0;i<5;i++)box([.18,.12,3.2],[-16.45,3.7+i*.6,1+Math.sin(i)*.5],i%2?bronze:cream);
