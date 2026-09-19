@@ -167,3 +167,9 @@ Production files are written to `dist/`. Serve them through an HTTP server; open
 | `vite.config.js` | Local server and production build |
 
 The native Vite config loader and disabled dependency prebundling avoid ancestor-directory access problems in this machine's restricted workspace. JavaScript dependencies are bundled locally. The optional Google Fonts stylesheet falls back to local sans-serif fonts when offline.
+
+### Director lab take
+
+Enable Directors Mode, open Actions, and choose **PROFIT IS MANDATORY**. Start screen recording before selecting the action: a two-second lead-in precedes the 24-second vertical take. The staged loss is fictional and does not change the portfolio or saved world. Escape or a double-tap stops filming; Replay repeats the same choreography.
+
+The silent scene is intended for an edit to **Locrian Dominant by Aloboi**; add the song in your video editor. Timing is not yet synced to a specific song excerpt. Relative to the end of the lead-in: loss 0–4s, isolation 4–8s, interrogation 8–12s, electrical correction 12–18s, aftermath 18–24s. The three electrical pulses begin at 12.5s, 14.5s, and 16.5s. Adjust `src/director-lab-timeline.js` to retime the scene.

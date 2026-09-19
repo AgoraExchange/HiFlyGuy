@@ -1,6 +1,25 @@
 ﻿import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sampleTake, SHOTS, TAKE_DURATION, LEAD_IN } from '../src/director-timeline.js';
+import { sampleLabTake, LAB_DURATION, LAB_SHOTS } from '../src/director-lab-timeline.js';
+
+test('Lab take replays exactly, clamps time and confines electricity to three pulses',()=>{
+  const visited=new Set();let pulses=0,active=false;
+  for(let i=0;i<=LAB_DURATION*100;i++){
+    const f=sampleLabTake(i/100);visited.add(f.shot);
+    assert.deepEqual(f,sampleLabTake(i/100));
+    for(const n of [...f.camera,f.pulse,f.slump,f.panic])assert.ok(Number.isFinite(n));
+    assert.ok(f.pulse>=0&&f.pulse<=1);
+    if(f.pulse>0&&!active)pulses++;
+    active=f.pulse>0;
+    if(active)assert.equal(f.shot,'correction');
+  }
+  assert.equal(pulses,3);assert.deepEqual([...visited],LAB_SHOTS.map(s=>s.id));
+  assert.equal(sampleLabTake(LAB_DURATION).slump,1);
+  assert.deepEqual(sampleLabTake(-10),sampleLabTake(0));
+  assert.deepEqual(sampleLabTake(NaN),sampleLabTake(0));
+  assert.deepEqual(sampleLabTake(100),sampleLabTake(LAB_DURATION));
+});
 test('Maybach choreography is repeatable, finite, and covers every requested shot',()=>{
   assert.equal(LEAD_IN,2);assert.equal(TAKE_DURATION,22);
   assert.deepEqual(SHOTS.map(s=>s.id),['elevator','turn','apartment','desk','wallet','chair']);
