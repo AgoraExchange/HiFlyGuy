@@ -168,6 +168,14 @@ Production files are written to `dist/`. Serve them through an HTTP server; open
 
 The native Vite config loader and disabled dependency prebundling avoid ancestor-directory access problems in this machine's restricted workspace. JavaScript dependencies are bundled locally. The optional Google Fonts stylesheet falls back to local sans-serif fonts when offline.
 
+### Director comeback take
+
+Enable Directors Mode, open Actions, and choose **SIX FEET. THREE PAIRS.** Start screen recording before selecting it. After a two-second lead-in, the 18-second vertical take follows Fly Guy from the lab to a fictional profitable trade, an elevator outfit reveal, sandal close-ups, all six feet, a penthouse strut, and six sandals on the trading desk. Sunglasses, a gold chain, and three pairs of sandals belong only to this cinematic actor; the saved world and wallet are unchanged.
+
+The sandals have sculpted soles, stitched footbeds, hollow leather straps, heel straps, and visible insect feet; the leg rig attaches at each ankle and keeps the soles level during the seated pose. The final shot uses a separate trading set with the chair behind the desk, the monitor facing Fly Guy, and the keyboard away from his feet. He lifts his feet above the desk edge before extending them onto the pad. A wide shot establishes the layout before a closer closing angle at 16.5 seconds.
+
+Add **LV Sandals by EsDeeKid, fakemink & Rico Ace** in your editor. No audio is bundled and the cuts are not synced to a specific excerpt yet. Relative to the end of the lead-in: lab 0–2s, profit 2–3.5s, elevator 3.5–6s, first pair 6–7.4s, second pair 7.4–8.8s, six-foot reveal 8.8–11s, strut 11–14s, desk 14–18s. Choreography lives in `src/director-comeback-timeline.js`. Escape or a double-tap stops the take; Replay resets both sets and every outfit pose.
+
 ### Director lab take
 
 Enable Directors Mode, open Actions, and choose **PROFIT IS MANDATORY**. Start screen recording before selecting the action: a two-second lead-in precedes the 24-second vertical take. The staged loss is fictional and does not change the portfolio or saved world. Escape or a double-tap stops filming; Replay repeats the same choreography.
