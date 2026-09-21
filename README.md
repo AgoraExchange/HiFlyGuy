@@ -168,6 +168,14 @@ Production files are written to `dist/`. Serve them through an HTTP server; open
 
 The native Vite config loader and disabled dependency prebundling avoid ancestor-directory access problems in this machine's restricted workspace. JavaScript dependencies are bundled locally. The optional Google Fonts stylesheet falls back to local sans-serif fonts when offline.
 
+### Director Tesla take
+
+Choose **Directors Mode → Actions → NIGHT SHIFT / TESLA**. The silent vertical take opens on the empty night desk, cuts to Fly Guy exiting the elevator with two fly girls, follows a scooter mount and ride, then shows him hopping into his chair before laptop trading, the wallet, cigarette lighting, and the crew behind his chair. At the configured drop, it changes to twelve two-beat shots: solo portraits, keyboard details, chart/indicator inserts, smoke, wallet, and two crew cameos.
+
+The default is a **12-second story lead-in to the drop**, based on the user's approximate Instagram selection from song 0:06 to 0:18. The **110 BPM** montage is based on a published tempo listing, not verified sample-level audio analysis. This produces a **25.1-second take**, plus the usual two-second recording lead-in. Set **Drop after** and **Montage tempo** in Actions to match the actual Instagram sound before recording; Replay uses those settings. The song is not bundled.
+
+Research: [Isekai Records upload of Fixupboy's tesla (slowed electro mix)](https://www.youtube.com/watch?v=T-UDC7BKVp4), [tempo listing](https://songbpm.com/%40fixupboy/tesla-slowed-electro-mix-y1vdj). The terminal is a deterministic cinematic paper-trading session, labeled in the screen footer; its three example closed trades total +$4,800 on $100,000 starting equity. No real orders are placed and filming does not change the saved world or portfolio. Timeline, cast, terminal, and scene live in `src/director-tesla-*.js`.
+
 ### Director comeback take
 
 Enable Directors Mode, open Actions, and choose **SIX FEET. THREE PAIRS.** Start screen recording before selecting it. After a two-second lead-in, the 18-second vertical take follows Fly Guy from the lab to a fictional profitable trade, an elevator outfit reveal, sandal close-ups, all six feet, a penthouse strut, and six sandals on the trading desk. Sunglasses, a gold chain, and three pairs of sandals belong only to this cinematic actor; the saved world and wallet are unchanged.
