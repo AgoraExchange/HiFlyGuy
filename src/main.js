@@ -124,7 +124,7 @@ function removeObject(id) {
   saveWorld();
 }
 function place(x, z) { if (!placing) return; if(!allowed(placing==='peppermint'?'interact':'food',viewRoom)){cancelPlacement();return toast('Visitors can leave fruit in the Habitat. Choose that room first.');} const o = sim.add(placing, x, z, viewRoom); if (o) { toast(`${STIMULI[placing].name} added. Let’s see what happens.`); cancelPlacement(); renderObjects(); saveWorld(); } else { toast('Eight objects is plenty for this little world. Remove one first.'); cancelPlacement(); } }
-try { habitat = new Habitat($('#viewport'), place, selectObject, (x, z) => { if (x === null) sim.putAwaySwatter(); else if (allowed('interact') && viewRoom === sim.environment) sim.aimSwatter(x, z); }, index => { if(!allowed('interact'))return; sim.training.selected = index; selectObject(null); saveWorld(); }); brain = new BrainView($('#brain-view')); } catch (error) { console.error(error); $('#render-error').hidden = false; $('#render-error').textContent = 'The 3D view needs WebGL. Enable hardware acceleration in your browser, then reload HiFlyGuy.'; }
+try { habitat = new Habitat($('#viewport'), place, selectObject, (x, z) => { if (x === null) sim.putAwaySwatter(); else if (allowed('interact') && viewRoom === sim.environment) sim.aimSwatter(x, z); }, index => { if(!allowed('interact'))return; sim.training.selected = index; selectObject(null); saveWorld(); }, ()=>authorize('interact')); brain = new BrainView($('#brain-view')); } catch (error) { console.error(error); $('#render-error').hidden = false; $('#render-error').textContent = 'The 3D view needs WebGL. Enable hardware acceleration in your browser, then reload HiFlyGuy.'; }
 setupTrainingUI(sim, saveWorld, toast, cancelPlacement, ()=>authorize('interact'));
 $('#vitals-note').insertAdjacentHTML('beforebegin', '<div class="vital"><span>Mood</span><div class="meter mood"><div id="mood-meter"></div></div><strong id="mood-value">Content</strong></div><p id="life-details" class="life-details"></p><p id="life-habits" class="life-details"></p>');
 
@@ -296,6 +296,7 @@ function applyMembership(state){
     history=[];lastSample=sim.time;logSignature='';habitat?.resetTrail();refreshEnvironment();memberUid=uid;setPaused(paused);document.querySelectorAll('[data-speed]').forEach(b=>b.classList.toggle('active',+b.dataset.speed===speed));
   }
   if(!paid){
+    if($('#terminal-dialog').open)$('#terminal-dialog').close();
     if(previousAccess||sim.swatter.active)cancelPlacement();
     if(sim.training.active||sim.training.pending)sim.cancelLesson();
     sim.life.autonomous=true;sim.life.holdUntil=0;if(sim.life.deskFocus)setDeskFocus(sim,false);sim.watchScreen=false;speed=1;

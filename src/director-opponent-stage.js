@@ -11,9 +11,9 @@ export class OpponentStage extends TeslaStage{
     this.double=this.fly;this.fly=createFly();this.night.scene.add(this.fly.group);
     const original=new Set(this.fly.group.children);dressTeslaFly(this.fly,this.materials);
     this.accessories=this.fly.group.children.filter(child=>!original.has(child));
-    this.rival=new T.Group();this.rival.position.set(4.3,0,5.4);this.night.scene.add(this.rival);
-    this.rivalChair=this.night.chair.clone(true);this.rivalChair.position.set(0,0,0);this.rival.add(this.rivalChair,this.double.group);
-    this.reflectionFly=createFly();dressTeslaFly(this.reflectionFly,this.materials);
+    this.double.group.visible=false;
+    this.reflectionFly=createFly();const reflectionOriginal=new Set(this.reflectionFly.group.children);dressTeslaFly(this.reflectionFly,this.materials);
+    this.reflectionAccessories=this.reflectionFly.group.children.filter(child=>!reflectionOriginal.has(child));
     this.mirrorScene=new T.Scene();this.mirrorScene.background=new T.Color('#020608');this.mirrorScene.add(this.reflectionFly.group);
     this.mirrorScene.add(new T.HemisphereLight('#a7c8c5','#111821',2));
     const mirrorLight=new T.DirectionalLight('#9ce8d0',4);mirrorLight.position.set(2,3,4);this.mirrorScene.add(mirrorLight);
@@ -45,42 +45,38 @@ export class OpponentStage extends TeslaStage{
   }
   render(time){
     const f=sampleOpponentTake(time),t=f.freeze?3:f.time;
-    this.host.dataset.shot=f.shot;this.host.dataset.phase=f.time<7?'story':f.time<11?'montage':'reveal';
+    this.host.dataset.shot=f.shot;this.host.dataset.phase=f.time<7?'story':f.time<11.5?'montage':'reveal';
     this.host.dataset.opponent=String(f.opponent);this.host.dataset.transformed=String(f.transformed);
     this.caption.textContent=f.caption;this.terminal.insert.hidden=true;this.scooter.group.visible=false;
     this.girls.forEach(g=>g.group.visible=false);this.fly.group.visible=true;this.accessories.forEach(o=>o.visible=f.future);
     Object.assign(this.actor,{time:t,speed:0,state:'Exploring',y:2.35});animateFly(this.fly,this.actor);
     this.renderNight({time:t,shot:'opponent',u:f.u,typing:true,wallet:false,smoke:false,lighting:0,drop:false});
     this.fly.lifeProps.cigarette.visible=this.fly.lifeProps.smoke.visible=false;this.lighter.visible=false;
-    const tapTime=f.future?t*.65:t*1.7;
-    poseTeslaHands(this.fly,side=>[side*.4788,.396+Math.max(0,Math.sin(tapTime*18+side*2))*(f.future?.045:.075),2.55],-.62,{elbowHeight:.72,raisedWrist:true});
-    this.double.group.visible=f.opponent;this.rival.rotation.y=f.opponent?Math.PI*(1-f.u):0;
-    this.double.group.position.set(0,2.35,-.8);this.double.group.rotation.set(-.45,Math.PI,0,'YXZ');
-    this.double.lifeProps.cigarette.visible=this.double.lifeProps.smoke.visible=false;
-    this.double.wings.forEach((w,i)=>{w.rotation.set(0,(i?1:-1)*.52,(i?1:-1)*.04);w.scale.setScalar(.78);});
-    this.double.legs.forEach((leg,i)=>{if(i%3!==0){leg.rotation.x=-.7;leg.scale.x=.68;}});
-    poseTeslaHands(this.double,side=>[side*.85,-.35,.7],-.45);
+    // Straighten into the same planted pose on both sides of the outfit cut.
+    const lean=-.83+.21*f.posture,tapTime=f.future?t*.65:0;
+    this.fly.group.rotation.set(lean,Math.PI,0,'YXZ');
+    poseTeslaHands(this.fly,side=>[side*.4788,.396+Math.max(0,Math.sin(tapTime*18+side*2))*(f.future?.045:0),2.55],lean,{elbowHeight:.72,raisedWrist:true});
+    this.double.group.visible=false;
     this.blue.color.set(f.future?'#72dab1':'#ef405e');this.blue.intensity=f.future?20:26;
-    this.night.key.color.set(f.future?'#c5e3db':'#929fb6');this.night.key.intensity=f.opponent?1.6:1.05;
+    this.night.key.color.set(f.future?'#c5e3db':'#929fb6');this.night.key.intensity=1.3;
     this.drawChart(f);this.screen.material=f.reflection?this.mirrorMaterial:this.chartMaterial;
     if(f.reflection){
       const reflection=this.reflectionFly;
-      reflection.wings.forEach((w,i)=>{w.rotation.set(0,(i?1:-1)*.6,(i?1:-1)*.04);w.scale.setScalar(.7);});
-      reflection.group.position.set(0,0,0);reflection.group.rotation.set(-.12,Math.sin(f.u*Math.PI)*.3,0);
+      const copyPose=(source,target)=>{target.position.copy(source.position);target.quaternion.copy(source.quaternion);target.scale.copy(source.scale);target.visible=source.visible;source.children.forEach((child,i)=>{if(target.children[i])copyPose(child,target.children[i]);});};
+      this.fly.group.children.forEach((child,i)=>copyPose(child,reflection.group.children[i]));
+      this.reflectionAccessories.forEach(o=>o.visible=f.future);
+      reflection.group.position.set(0,0,0);reflection.group.rotation.set(f.shot==='reflection'?-.62:lean,0,0,'YXZ');
       reflection.lifeProps.cigarette.visible=reflection.lifeProps.smoke.visible=false;
-      poseTeslaHands(reflection,side=>side<0?[-.5,.1+f.u*.65,1.2]:[.55,-.4,1],-.12);
       this.renderer.setRenderTarget(this.mirrorTarget);this.renderer.render(this.mirrorScene,this.mirrorCamera);this.renderer.setRenderTarget(null);
     }
     let camera=[5.8-f.u*.8,5.5,6.5-f.u],target=[0,3,-1],fov=48;
     if(f.reflection){camera=[1.1-f.u*.65,4.15,2.0-f.u*.35];target=[0,4.12,-2.36];fov=43;}
-    if(f.opponent){camera=[7.8-f.u*.4,4.6,-1.6];target=[4.3,2.5,4.7];fov=51;this.fly.group.rotation.y=Math.PI-f.u*1.8;}
+    if(['resolve','ready','transform'].includes(f.shot)){camera=[4.8,4.1,-1.5];target=[0,2.95,.2];fov=45;}
     if(f.shot.endsWith('eyes')){camera=[2.2,3.7,-1.4];target=[0,3,.2];fov=35;}
     if(f.shot.endsWith('hands')){camera=[3.3,4.9,-.7];target=[0,2.8,-1.65];fov=48;}
     if(f.shot.endsWith('chart')){camera=[.15,4.14,2.0];target=[0,4.12,-2.36];fov=43;}
-    if(f.shot==='empty-chair'){camera=[15,10,0];target=[2.4,2.2,3.0];fov=68;}
     if(f.shot==='become'){
-      camera=[4.9-f.u*.7,4.2,-1.6];target=[0,2.9,.25];fov=45;
-      this.fly.group.rotation.y=Math.PI-.7*(1-f.u);
+      camera=[3.6+f.u*1.6,5.1+f.u*.6,5.3+f.u*1.3];target=[0,3.2,-.9];fov=48;
     }
     this.camera.position.set(...camera);this.camera.lookAt(...target);this.camera.fov=fov;this.camera.updateProjectionMatrix();
     this.renderer.render(this.night.scene,this.camera);

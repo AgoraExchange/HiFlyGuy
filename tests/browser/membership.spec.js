@@ -61,3 +61,27 @@ test('Username login errors and password changes work without an email field',as
  await page.locator('#account-dialog summary').click();await page.locator('#current-password').fill('testPassword123');await page.locator('#new-password').fill('newTestPassword123');await page.locator('#confirm-password').fill('newTestPassword123');
  await page.locator('#password-change-form button').click();await expect(page.locator('#password-change-status')).toHaveText('Password updated.');
 });
+
+test('Night desk laptop and terminal require membership and close on expiry',async({page})=>{
+  await fixtures(page);await page.goto('/');await page.locator('#guest-enter').click();
+  await page.locator('[data-environment="computer"]').click();
+  const terminal=page.frameLocator('.laptop-display iframe');
+  const screenButton=terminal.locator('#scene-market-button');
+  await expect(screenButton).toBeVisible();
+  await expect(page.locator('#terminal-btn')).toHaveClass(/access-locked/);
+  const box=await screenButton.boundingBox();await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
+  await expect(page.locator('#entry-dialog')).toBeVisible();
+  await expect(screenButton).not.toHaveAttribute('aria-expanded','true');
+  await page.locator('#guest-enter').click();await page.locator('#terminal-btn').click();
+  await expect(page.locator('#entry-dialog')).toBeVisible();await expect(page.locator('#terminal-dialog')).toBeHidden();
+  await page.locator('#guest-enter').click();
+  await page.evaluate(state=>window.testMembership.set(state),free);
+  await page.locator('[data-environment="computer"]').click();await page.locator('#terminal-btn').click();
+  await expect(page.locator('#upgrade-dialog')).toBeVisible();await page.locator('#upgrade-dialog [data-member-close]').click();
+  await screenButton.focus();await page.keyboard.press('Enter');await expect(page.locator('#upgrade-dialog')).toBeVisible();
+  await page.locator('#upgrade-dialog [data-member-close]').click();
+  await page.evaluate(()=>window.testMembership.set({verified:true,entitlement:{tier:'flyest',expiresAt:Date.now()+3600000}}));
+  await page.locator('#terminal-btn').click();await expect(page.locator('#terminal-dialog')).toBeVisible();
+  await page.evaluate(()=>window.testMembership.set({entitlement:{tier:'flyest',expiresAt:Date.now()-1}}));
+  await expect(page.locator('#terminal-dialog')).toBeHidden();await expect(page.locator('#terminal-btn')).toHaveClass(/access-locked/);
+});

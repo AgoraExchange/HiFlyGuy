@@ -155,7 +155,8 @@ export function createSwatter() {
 }
 
 export class Habitat {
-  constructor(container, onPlace, onSelect = () => {}, onSwatterAim = () => {}, onPerch = () => {}) {
+  constructor(container, onPlace, onSelect = () => {}, onSwatterAim = () => {}, onPerch = () => {}, authorizeTerminal = () => false) {
+    this.authorizeTerminal=authorizeTerminal;
     this.container = container; this.onPlace = onPlace; this.follow = false; this.placing = false; this.objects = new Map(); this.showScent = false;
     this.onSelect = onSelect; this.selectedId = null; this.showMemory = true; this.memoryMarkers = new Map();
     this.swatterMode = false; this.swatterModel = createSwatter(); this.swatterModel.visible = false;
@@ -210,7 +211,7 @@ export class Habitat {
   resize() { const w = this.container.clientWidth, h = this.container.clientHeight; if (!w || !h) return; this.camera.aspect = w / h; this.camera.fov = w < h ? 55 : 38; this.camera.updateProjectionMatrix(); this.renderer.setSize(w, h); this.computerRoom?.resize(w, h); if (this.homeFraming) this.frame(); }
   setEnvironment(environment) {
     this.environment = environment; this.resetTrail(); this.lifeScenes.setRoom(environment); const computer = environment === 'computer';
-    if (computer && !this.computerRoom) this.computerRoom = new ComputerRoom(this.container, this.scene);
+    if (computer && !this.computerRoom) this.computerRoom = new ComputerRoom(this.container, this.scene, this.authorizeTerminal);
     this.computerRoom?.setVisible(computer);
     if (environment === 'playground' && !this.playground) { this.playground = new Playground(); this.scene.add(this.playground.group); }
     if (this.playground) this.playground.group.visible = environment === 'playground';

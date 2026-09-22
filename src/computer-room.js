@@ -4,7 +4,8 @@ import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer
 // The desk shares the habitat's floor coordinates, so scents, placement and
 // spatial memories keep their meaning when the scenery changes.
 export class ComputerRoom {
-  constructor(container, scene) {
+  constructor(container, scene, authorizeTerminal = () => false) {
+    this.authorizeTerminal=authorizeTerminal;
     this.group = new THREE.Group(); scene.add(this.group);
     const metal = new THREE.MeshStandardMaterial({ color: '#182836', metalness: .6, roughness: .42 });
     const dark = new THREE.MeshStandardMaterial({ color: '#101620', roughness: .8 });
@@ -37,6 +38,14 @@ export class ComputerRoom {
     this.cssScene = new THREE.Scene();
     this.display = document.createElement('div'); this.display.className = 'laptop-display';
     this.iframe = document.createElement('iframe'); this.iframe.title = 'FlyGuy market terminal — TradingView';
+    this.iframe.addEventListener('load',()=>{
+      const blockLockedInput=event=>{
+        if(!event.isTrusted||event.key==='Tab'||event.key==='Escape')return;
+        if(!this.authorizeTerminal()){event.preventDefault();event.stopImmediatePropagation();}
+      };
+      this.iframe.contentDocument?.addEventListener('click',blockLockedInput,true);
+      this.iframe.contentDocument?.addEventListener('keydown',blockLockedInput,true);
+    });
     this.iframe.addEventListener('load', () => { this.lastTelemetry = -1; this.lastDeskActive = undefined; this.lastDeskView = undefined; this.setTerminalMode(this.iframe.parentElement !== this.display); });
     this.iframe.src = `${import.meta.env.BASE_URL}market.html`; this.iframe.tabIndex = -1; this.display.append(this.iframe);
     const surface = new CSS3DObject(this.display); surface.position.copy(screen.position); surface.scale.setScalar(.02); this.cssScene.add(surface);
@@ -86,6 +95,7 @@ export class ComputerRoom {
     return hit?.object === this.screen ? hit : null;
   }
   clickScreen(hit) {
+    if(!this.authorizeTerminal())return;
     this.iframe.contentWindow?.postMessage({ type: 'market-pointer', x: hit.uv.x * 825, y: (1 - hit.uv.y) * 495 }, location.origin);
   }
   updateDesk(elapsed, sim, running) {
