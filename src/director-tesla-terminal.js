@@ -12,6 +12,8 @@ export function createTeslaTerminal(materials){
   function draw(canvas,f){
     const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,portrait=h>w;
     const state=sampleTeslaTerminal(f.terminalTime),trade=TESLA_TRADES[state.asset];
+    const closed=Number.isInteger(f.closedTrades)?Math.max(0,Math.min(3,f.closedTrades)):3;
+    const realized=TESLA_TRADES.slice(0,closed).reduce((sum,tr)=>sum+tr.profit,0);
     ctx.fillStyle='#071118';ctx.fillRect(0,0,w,h);
     const text=(s,x,y,size=18,color='#a4bbc7',weight='400')=>{ctx.fillStyle=color;ctx.font=`${weight} ${size}px monospace`;ctx.fillText(s,x,y);};
     const line=(x1,y1,x2,y2,color='#1b303d')=>{ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();};
@@ -23,15 +25,15 @@ export function createTeslaTerminal(materials){
     line(left,portrait?187:93,right,portrait?187:93);
     if(f.wallet){
       const top=portrait?247:145;
-      text('TOTAL EQUITY',left,top,18,'#8bb0b5');text(usd(104800),left,top+83,portrait?64:74,'#eefbf4','700');
-      text('+ '+usd(state.profit)+'  REALIZED',left,top+133,portrait?26:27,'#93e3b1');
-      text('3 CLOSED TRADES',left,top+178,17,'#809cab');
+      text('TOTAL EQUITY',left,top,18,'#8bb0b5');text(usd(100000+realized),left,top+83,portrait?64:74,'#eefbf4','700');
+      text('+ '+usd(realized)+'  REALIZED',left,top+133,portrait?26:27,'#93e3b1');
+      text(closed+(closed===1?' CLOSED TRADE':' CLOSED TRADES'),left,top+178,17,'#809cab');
       const chartTop=top+215,chartHeight=portrait?230:115;
       panel(left,chartTop,w-left*2,chartHeight);ctx.beginPath();ctx.strokeStyle='#8cdeb5';ctx.lineWidth=3;
       for(let i=0;i<36;i++){const x=left+20+i/35*(w-left*2-40),y=chartTop+chartHeight-24-i/35*(chartHeight-48)-Math.sin(i*1.7)*7;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.stroke();
       const rows=chartTop+chartHeight+65;
       text('ASSET',left,rows,16);text('REALIZED P&L',right-(portrait?208:230),rows,16);
-      TESLA_TRADES.forEach((tr,i)=>{const y=rows+55+i*(portrait?83:47);line(left,y+22,right,y+22);text(tr.symbol,left,y,24,'#e4edf1','700');text('CLOSED',left+(portrait?120:210),y,15,'#698e92');text('+'+usd(tr.profit),right-(portrait?210:230),y,24,'#93e3b1');});
+      TESLA_TRADES.forEach((tr,i)=>{const y=rows+55+i*(portrait?83:47);line(left,y+22,right,y+22);text(tr.symbol,left,y,24,'#e4edf1','700');text(i<closed?'CLOSED':'WATCHING',left+(portrait?120:210),y,15,'#698e92');text(i<closed?'+'+usd(tr.profit):'--',right-(portrait?210:230),y,24,'#93e3b1');});
       return;
     }
     const top=portrait?229:132,tabWidth=portrait?195:180;
@@ -65,7 +67,7 @@ export function createTeslaTerminal(materials){
     if(state.click){ctx.strokeStyle='#8cffe0';ctx.beginPath();ctx.arc(5,8,27,0,Math.PI*2);ctx.stroke();}ctx.restore();
   }
   return {canvas,insert,material,update(f){
-    const key=`${f.wallet}/${Math.floor(f.terminalTime*20)}`;if(key===last)return;last=key;
+    const key=`${f.wallet}/${f.closedTrades}/${Math.floor(f.terminalTime*20)}`;if(key===last)return;last=key;
     draw(canvas,f);draw(insert,f);texture.needsUpdate=true;
     insert.dataset.view=f.wallet?'wallet':'chart';insert.dataset.symbol=TESLA_TRADES[sampleTeslaTerminal(f.terminalTime).asset].symbol;
   }};
