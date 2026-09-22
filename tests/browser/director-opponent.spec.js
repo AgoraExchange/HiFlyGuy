@@ -9,16 +9,18 @@ test('Opponent camera review: reflection, match-cut transformation and replay',a
   }
   const result=await page.evaluate(()=>{
     const s=window.opponent,pose=fly=>[...fly.group.rotation.toArray(),...fly.forelegs.flatMap(leg=>leg.segments.flatMap(m=>m.position.toArray()))];
+    s.render(3.5);const futurePreview=s.reflectionAccessories.every(o=>o.visible)&&s.accessories.every(o=>!o.visible);
+    s.render(5.6);const stillFuture=s.reflectionAccessories.every(o=>o.visible)&&s.accessories.every(o=>!o.visible);
     s.render(6.999);const readyCamera=s.camera.position.toArray(),readyPose=s.fly.group.rotation.toArray();
     s.render(7);const dropCamera=s.camera.position.toArray(),dropPose=s.fly.group.rotation.toArray();
     const transformed=s.accessories.every(o=>o.visible)&&!s.double.group.visible;
     s.render(13.8);const mirrored=s.reflectionAccessories.every(o=>o.visible)&&s.screen.material===s.mirrorMaterial;
     const handsMatch=JSON.stringify(s.fly.forelegs.map(l=>l.segments.map(m=>m.position.toArray())))===JSON.stringify(s.reflectionFly.forelegs.map(l=>l.segments.map(m=>m.position.toArray())));
     s.render(0);const reset=s.accessories.every(o=>!o.visible)&&!s.double.group.visible;
-    return {readyCamera,dropCamera,readyPose,dropPose,transformed,mirrored,handsMatch,reset};
+    return {futurePreview,stillFuture,readyCamera,dropCamera,readyPose,dropPose,transformed,mirrored,handsMatch,reset};
   });
   expect(result.readyCamera).toEqual(result.dropCamera);expect(result.readyPose[0]).toBeCloseTo(result.dropPose[0],3);
-  expect(result.transformed&&result.mirrored&&result.handsMatch&&result.reset).toBe(true);
+  expect(result.futurePreview&&result.stillFuture&&result.transformed&&result.mirrored&&result.handsMatch&&result.reset).toBe(true);
   await page.evaluate(()=>window.opponent.dispose());expect(errors).toEqual([]);
 });
 test('Opponent action completes, replays and preserves the saved world',async({page})=>{

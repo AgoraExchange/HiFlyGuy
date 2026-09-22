@@ -64,8 +64,9 @@ export class OpponentStage extends TeslaStage{
       const reflection=this.reflectionFly;
       const copyPose=(source,target)=>{target.position.copy(source.position);target.quaternion.copy(source.quaternion);target.scale.copy(source.scale);target.visible=source.visible;source.children.forEach((child,i)=>{if(target.children[i])copyPose(child,target.children[i]);});};
       this.fly.group.children.forEach((child,i)=>copyPose(child,reflection.group.children[i]));
-      this.reflectionAccessories.forEach(o=>o.visible=f.future);
-      reflection.group.position.set(0,0,0);reflection.group.rotation.set(f.shot==='reflection'?-.62:lean,0,0,'YXZ');
+      // The screen previews his successful future self before the real outfit reveal.
+      this.reflectionAccessories.forEach(o=>o.visible=true);
+      reflection.group.position.set(0,0,0);reflection.group.rotation.set(f.future?lean:-.62,0,0,'YXZ');
       reflection.lifeProps.cigarette.visible=reflection.lifeProps.smoke.visible=false;
       this.renderer.setRenderTarget(this.mirrorTarget);this.renderer.render(this.mirrorScene,this.mirrorCamera);this.renderer.setRenderTarget(null);
     }
