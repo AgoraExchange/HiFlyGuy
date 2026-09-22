@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './member-fixture.js';
 
 for (const mobile of [false, true]) test(`FlyGuy comes to YOU and can be rewarded (${mobile ? 'phone fullscreen' : 'desktop with reload'})`, async ({ page }) => {
   const errors = []; page.on('pageerror', e => errors.push(e.message));
@@ -12,10 +12,10 @@ for (const mobile of [false, true]) test(`FlyGuy comes to YOU and can be rewarde
   await expect(page.locator('#reward-btn')).toBeEnabled({ timeout: 30000 });
   await expect(page.locator('#lesson-message')).toContainText('He came to you');
   if (!mobile) {
-    await page.getByRole('button', { name: 'Pause simulation', exact: true }).click();
+    await page.getByRole('button', { name: 'Pause virtual world', exact: true }).click();
     await page.reload(); await expect(page.locator('#perch-select')).toHaveValue('you');
     await expect(page.locator('#lesson-message')).toContainText('He came to you');
-    await page.getByRole('button', { name: 'Resume simulation', exact: true }).click();
+    await page.getByRole('button', { name: 'Resume virtual world', exact: true }).click();
   }
   await page.locator('#training-toggle').click();
   await page.screenshot({ path: `test-results/come-to-me-${mobile ? 'phone' : 'desktop'}.png` });
@@ -25,7 +25,7 @@ for (const mobile of [false, true]) test(`FlyGuy comes to YOU and can be rewarde
   await expect(page.locator('#bond-mini')).not.toHaveText('12%');
   if (!mobile) {
     await page.getByRole('button', { name: 'Come to me', exact: true }).click();
-    const latest = await page.evaluate(() => JSON.parse(localStorage.getItem('hiflyguy.world.v1')).world.training.trials[0]);
+    const latest = await page.evaluate(() => JSON.parse(localStorage.getItem('hiflyguy.account.test-creator.hiflyguy.world.v1')).world.training.trials[0]);
     expect(latest.destination).toBe('you'); expect(latest.guided).toBe(false);
   }
   expect(errors).toEqual([]);
@@ -55,7 +55,7 @@ test('Playground practice builds saved bond, improves recall, and unlocks a full
   await expect(page.locator('#behavior-pill')).toHaveText('Backflipping');
   await page.screenshot({ path: 'test-results/playground-backflip.png', fullPage: true });
   await expect(page.locator('#reward-btn')).toBeEnabled(); await page.locator('#reward-btn').click();
-  await page.getByRole('button', { name: 'Pause simulation', exact: true }).click(); await page.waitForTimeout(200);
+  await page.getByRole('button', { name: 'Pause virtual world', exact: true }).click(); await page.waitForTimeout(200);
   const bond = await page.locator('#bond-value').textContent(), skill = await page.locator('#flip-skill').textContent();
   await page.reload(); await expect(page.locator('#viewport')).toHaveAttribute('data-environment', 'playground');
   await expect(page.locator('#bond-value')).toHaveText(bond); await expect(page.locator('#flip-skill')).toHaveText(skill);

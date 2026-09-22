@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './member-fixture.js';
 
 test('Night desk preserves the world, supports watching, and survives unavailable market data', async ({ page }) => {
   const errors = []; page.on('pageerror', e => errors.push(e.message));
@@ -6,7 +6,7 @@ test('Night desk preserves the world, supports watching, and survives unavailabl
   await page.goto('/');
   await page.getByRole('button', { name: 'Place ripe banana', exact: true }).click();
   await page.getByRole('button', { name: /Place near FlyGuy|Place in this room/ }).click();
-  await page.getByRole('button', { name: 'Pause simulation', exact: true }).click();
+  await page.getByRole('button', { name: 'Pause virtual world', exact: true }).click();
   await page.waitForTimeout(200);
   const coordinates = await page.locator('#coordinates').textContent();
   await page.getByRole('button', { name: '03 Night desk', exact: true }).click();
@@ -27,9 +27,9 @@ test('Night desk preserves the world, supports watching, and survives unavailabl
   await page.reload();
   await expect(page.locator('#viewport')).toHaveAttribute('data-environment', 'computer');
   await expect(page.locator('#object-count')).toHaveText('0 objects');
-  await expect(page.getByRole('button', { name: 'Resume simulation', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Resume virtual world', exact: true })).toBeVisible();
   await page.locator('#invite-fly').click();
-  await page.getByRole('button', { name: 'Resume simulation', exact: true }).click();
+  await page.getByRole('button', { name: 'Resume virtual world', exact: true }).click();
   await expect(page.locator('#behavior-pill')).toHaveText('Watching screen', { timeout: 25000 });
   await page.screenshot({ path: 'test-results/night-desk-watching.png', fullPage: true });
   await page.getByRole('button', { name: 'Watching enabled', exact: true }).click();
@@ -76,7 +76,7 @@ for (const mobile of [false, true]) test(`Laptop market selector works directly 
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.route('https://s3.tradingview.com/**', route => route.abort());
   if (mobile) await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/'); await page.getByRole('button', { name: 'Pause simulation', exact: true }).click();
+  await page.goto('/'); await page.getByRole('button', { name: 'Pause virtual world', exact: true }).click();
   await page.getByRole('button', { name: '03 Night desk', exact: true }).click();
   if (mobile) await page.getByRole('button', { name: 'Fullscreen habitat', exact: true }).click();
   const terminal = page.frameLocator('.laptop-display iframe');

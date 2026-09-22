@@ -189,3 +189,13 @@ Add **LV Sandals by EsDeeKid, fakemink & Rico Ace** in your editor. No audio is 
 Enable Directors Mode, open Actions, and choose **PROFIT IS MANDATORY**. Start screen recording before selecting the action: a two-second lead-in precedes the 24-second vertical take. The staged loss is fictional and does not change the portfolio or saved world. Escape or a double-tap stops filming; Replay repeats the same choreography.
 
 The silent scene is intended for an edit to **Locrian Dominant by Aloboi**; add the song in your video editor. Timing is not yet synced to a specific song excerpt. Relative to the end of the lead-in: loss 0–4s, isolation 4–8s, interrogation 8–12s, electrical correction 12–18s, aftermath 18–24s. The three electrical pulses begin at 12.5s, 14.5s, and 16.5s. Adjust `src/director-lab-timeline.js` to retime the scene.
+
+### The Opponent cinematic
+
+Choose **Directors Mode > Actions > THE OPPONENT** for a 14-second silent take with a two-second recording lead-in. Add the Instagram excerpt of **Your next opponent is you (Super Slowed)** by **Eclipse**, selected from approximately **0:06 to 0:20**, in your editor. Cut timing follows the story; exact musical accents have not been verified against the audio.
+
+The red-lit desk leads into a laptop reflection that moves while Fly Guy freezes. Another Fly turns in a second chair, followed by matching anxious/calm eye shots, frantic/precise typing and red/green fictional charts. The second chair is empty at the end, and the original Fly now wears the shades and chain. Closing caption: **HE WAS ALWAYS THE COMPETITION.** Replay resets both actors and the transformation; the saved habitat and portfolio are untouched.
+
+### Accounts and memberships
+
+The 2.5-second entrance, Firebase accounts, visitor access, Square membership links and manual username grants are documented in [MEMBERSHIPS.md](MEMBERSHIPS.md). Firebase console setup and publication of `firestore.rules` are required before live sign-up.

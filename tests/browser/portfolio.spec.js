@@ -1,4 +1,4 @@
-﻿import { test, expect } from '@playwright/test';
+﻿import { test, expect } from './member-fixture.js';
 const prices = {BTC:70000,ETH:3000,SOL:150};
 async function quotes(page) {
   await page.route('https://api.coinbase.com/**', route => { const url = new URL(route.request().url()), symbol = url.pathname.split('/')[3].split('-')[0]; const discount = url.searchParams.has('date') ? .95 : 1; return route.fulfill({json:{data:{amount:String(prices[symbol]*discount),currency:'USD',base:symbol}}}); });

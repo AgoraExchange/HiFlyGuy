@@ -278,20 +278,47 @@ export class BrainView {
   constructor(container) {
     this.container = container; this.scene = new THREE.Scene(); this.camera = new THREE.PerspectiveCamera(36, 1, 0.1, 50); this.camera.position.set(0, 0.5, 6.5);
     this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true }); this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); container.append(this.renderer.domElement);
-    this.renderer.domElement.setAttribute('aria-label', 'Interactive illustrative neural map. Drag to rotate, scroll or pinch to zoom.');
+    this.renderer.domElement.setAttribute('aria-label', 'Interactive fruit-fly-inspired brain model. Drag to rotate, scroll or pinch to zoom.');
     this.group = new THREE.Group(); this.scene.add(this.group); const rand = seededRandom(52), positions = [], groups = [];
-    for (let i = 0; i < 5400; i++) {
-      const side = i % 2 ? 1 : -1, lobe = i < 2600, a = rand() * Math.PI * 2, b = Math.acos(2 * rand() - 1), radius = Math.pow(rand(), 0.32);
+    // Bilateral neuropil-inspired volumes, rather than four isolated signal balls.
+    const regions = [
+      [1.63,.08,0,.48,.79,.43], [1.15,.12,.03,.35,.62,.48],
+      [.55,.35,0,.64,.62,.49], [.43,-.38,.25,.32,.30,.30],
+      [.40,.68,-.18,.30,.24,.28], [.20,-.60,-.05,.30,.37,.30],
+    ];
+    for (let i = 0; i < 14000; i++) {
+      const side = i % 2 ? 1 : -1, region = Math.floor(rand()*regions.length), a = rand() * Math.PI * 2, b = Math.acos(2 * rand() - 1), radius = Math.pow(rand(), 0.26);
       const x = Math.sin(b) * Math.cos(a) * radius, y = Math.cos(b) * radius, z = Math.sin(b) * Math.sin(a) * radius;
-      positions.push(side * (lobe ? 1.5 : 0.57) + x * (lobe ? 0.64 : 0.83), y * (lobe ? 0.83 : 0.7) + (lobe ? 0 : 0.12), z * 0.52);
-      groups.push(lobe ? 2 : i % 4);
+      const [cx,cy,cz,rx,ry,rz]=regions[region];
+      positions.push(side*(cx+x*rx),cy+y*ry,cz+z*rz);
+      groups.push(region%4);
     }
     this.groups = groups; this.positions = positions; this.colors = new Float32Array(positions.length);
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3)); geo.setAttribute('color', new THREE.BufferAttribute(this.colors, 3));
-    this.points = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.024, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); this.group.add(this.points);
-    const fibers = [];
-    for (let i = 0; i < 260; i++) { const side = i % 2 ? 1 : -1; const x = side * (1.05 + rand() * 0.4), y = (rand() - 0.5) * 0.9, z = (rand() - 0.5) * 0.5; fibers.push(vec(x, y, z), vec(side * rand() * 0.5, y * 0.4 - 0.15, z * 0.6)); }
-    this.group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(fibers), new THREE.LineBasicMaterial({ color: '#dbe8a1', transparent: true, opacity: 0.09, blending: THREE.AdditiveBlending })));
+    this.strengths=new Float32Array(groups.length);geo.setAttribute('strength',new THREE.BufferAttribute(this.strengths,1));
+    const glow=new THREE.ShaderMaterial({transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,vertexColors:true,
+      vertexShader:`attribute float strength; varying vec3 vColor; varying float vStrength; void main(){vColor=color;vStrength=strength;vec4 mv=modelViewMatrix*vec4(position,1.0);gl_Position=projectionMatrix*mv;gl_PointSize=clamp((2.5+strength*5.0)*4.0/-mv.z,1.0,15.0);}`,
+      fragmentShader:`varying vec3 vColor;varying float vStrength;void main(){float d=length(gl_PointCoord-.5)*2.0;if(d>1.0)discard;float halo=pow(1.0-d,2.0);float core=pow(1.0-d,7.0);gl_FragColor=vec4(vColor*(.75+core),halo*(.3+vStrength*.7));}`});
+    this.points=new THREE.Points(geo,glow);this.group.add(this.points);
+    this.palette=[new THREE.Color('#bde37a'),new THREE.Color('#a18aff'),new THREE.Color('#6bdcda'),new THREE.Color('#f1b36f')];
+    this.packetPaths=[];
+    const fibers = [], fiberColors=[], curves=[];
+    const pointAt=index=>new THREE.Vector3().fromArray(positions,index*3);
+    for (let i = 0; i < 1800; i++) {
+      const start=pointAt(Math.floor(rand()*groups.length)),end=pointAt(Math.floor(rand()*groups.length));
+      // Local arbors dominate; occasional long curved tracts bridge the hemispheres.
+      if(i%5!==0)end.x=Math.abs(end.x)*Math.sign(start.x);
+      const bend=vec((start.x+end.x)*.32,(start.y+end.y)*.5+.15+rand()*.25,(rand()-.5)*.55);
+      const curve=new THREE.QuadraticBezierCurve3(start,bend,end);curves.push(curve);
+      const samples=curve.getPoints(12),color=this.palette[i%4];
+      for(let j=0;j<12;j++){fibers.push(samples[j],samples[j+1]);fiberColors.push(color.r,color.g,color.b,color.r,color.g,color.b);}
+    }
+    const fiberGeo=new THREE.BufferGeometry().setFromPoints(fibers);fiberGeo.setAttribute('color',new THREE.Float32BufferAttribute(fiberColors,3));
+    this.fibers=new THREE.LineSegments(fiberGeo,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.055,blending:THREE.AdditiveBlending,depthWrite:false}));this.group.add(this.fibers);
+    const packetPositions=new Float32Array(64*3),packetColors=new Float32Array(64*3),packetStrength=new Float32Array(64).fill(1);
+    for(let i=0;i<64;i++){this.packetPaths.push(curves[i*23%curves.length]);const c=this.palette[i%4];c.toArray(packetColors,i*3);}
+    const packetGeo=new THREE.BufferGeometry();packetGeo.setAttribute('position',new THREE.BufferAttribute(packetPositions,3));packetGeo.setAttribute('color',new THREE.BufferAttribute(packetColors,3));packetGeo.setAttribute('strength',new THREE.BufferAttribute(packetStrength,1));
+    this.packets=new THREE.Points(packetGeo,glow);this.group.add(this.packets);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableZoom = true; this.controls.enablePan = false; this.controls.enableDamping = true;
     this.controls.minDistance = 0.65; this.controls.maxDistance = 12;
@@ -315,7 +342,15 @@ export class BrainView {
       if (t === 1) { this.resetMotion = null; this.controls.enableDamping = true; }
     }
     const values = Object.values(sim.signals);
-    for (let i = 0; i < this.groups.length; i++) { const a = values[this.groups[i]], flash = Math.sin(i * 12.3 + sim.time * (3 + a * 5)) > 0.91 ? 1 : 0.15; const b = 0.15 + a * 0.65 + flash * 0.25; this.colors[i * 3] = b * (this.groups[i] === 1 ? 0.5 : 0.86); this.colors[i * 3 + 1] = b; this.colors[i * 3 + 2] = b * (this.groups[i] === 1 ? 0.92 : 0.62); }
+    for(let i=0;i<this.groups.length;i++){
+      const g=this.groups[i],a=sim.activity[g*192+i%192]??values[g],wave=.5+.5*Math.sin(sim.time*(2+a*4)-this.positions[i*3]*3-i*.11);
+      const intensity=.62+a*.38+wave*(.05+a*.15),c=this.palette[g];this.strengths[i]=intensity;
+      this.colors[i*3]=c.r*intensity;this.colors[i*3+1]=c.g*intensity;this.colors[i*3+2]=c.b*intensity;
+    }
+    const packets=this.packets.geometry.attributes.position,packetStrength=this.packets.geometry.attributes.strength;
+    this.packetPaths.forEach((curve,i)=>{const g=i%4,u=(sim.time*(.12+values[g]*.5)+i*.618)%1,p=curve.getPoint(u);packets.setXYZ(i,p.x,p.y,p.z);packetStrength.setX(i,.15+values[g]*.85);});
+    packets.needsUpdate=packetStrength.needsUpdate=true;this.points.geometry.attributes.strength.needsUpdate=true;
+    this.fibers.material.opacity=.035+Math.max(...values)*.018;
     this.points.geometry.attributes.color.needsUpdate = true; this.group.rotation.y = Math.sin(sim.time * 0.12) * 0.17; this.controls.update(); this.renderer.render(this.scene, this.camera);
   }
 }

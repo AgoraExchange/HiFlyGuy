@@ -1,4 +1,4 @@
-﻿import { test, expect } from '@playwright/test';
+﻿import { test, expect } from './member-fixture.js';
 const mockMarket = page => page.route('https://s3.tradingview.com/**', route => route.fulfill({ contentType: 'text/javascript', body: `(()=>{const s=document.currentScript,c=JSON.parse(s.textContent),f=document.createElement('iframe');f.srcdoc='<body>'+JSON.stringify(c)+'</body>';s.parentElement.querySelector('.tradingview-widget-container__widget').append(f);})();` }));
 for (const fallback of [false, true]) test(`Market and chart settings survive terminal moves and reload (fallback ${fallback})`, async ({page}) => {
   await mockMarket(page);
@@ -33,12 +33,12 @@ test('Adderall travels, cycles markets and chart settings, pauses, and stops', a
   await expect(laptop.getByRole('button',{name:'Line',exact:true})).toHaveAttribute('aria-pressed','true',{timeout:4000});
   await expect(laptop.getByRole('button',{name:'MA',exact:true})).toHaveAttribute('aria-pressed','true',{timeout:4000});
   await expect(laptop.locator('#symbol')).toHaveValue('KRAKEN:XMRUSD',{timeout:4000});
-  await page.getByRole('button',{name:'Pause simulation',exact:true}).click();
+  await page.getByRole('button',{name:'Pause virtual world',exact:true}).click();
   const snapshot=await laptop.locator('#symbol').inputValue();
   await page.waitForTimeout(6500);
   await expect(laptop.locator('#symbol')).toHaveValue(snapshot);
   await expect(laptop.locator('#desk-cursor')).toBeHidden();
-  await page.getByRole('button',{name:'Resume simulation',exact:true}).click();
+  await page.getByRole('button',{name:'Resume virtual world',exact:true}).click();
   await expect(laptop.locator('#clear-studies')).toHaveClass(/fly-click/,{timeout:6000});
   await expect(laptop.getByRole('button',{name:'MA',exact:true})).toHaveAttribute('aria-pressed','false');
   await page.screenshot({path:'test-results/desk-focus.png',fullPage:true});

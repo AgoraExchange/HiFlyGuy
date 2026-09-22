@@ -4,3 +4,7 @@ test-results/
 playwright-report/
 *.log
 .server.pid
+.env
+.env.local
+.env.*.local
+*service-account*.json

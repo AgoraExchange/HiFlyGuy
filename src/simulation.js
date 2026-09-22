@@ -1,6 +1,7 @@
 import { newLife, updateLife, lifeMotion, roomHeight, ROOMS, LIFE_STATES } from './life.js';
 // A deliberately small, synthetic rate network. No FlyWire records are loaded.
 import { newTraining, updateTraining, requestLesson, rewardLesson, cancelLesson, lessonMotion, perchMotion, surfaceHeight, TRAINING_STATES } from './training.js';
+export const NEURAL_UNITS=768, NEURAL_GROUP_SIZE=192, NEURAL_CONNECTIONS=4608;
 export const STIMULI = {
   banana: { name: 'Ripe banana', scent: 1, color: '#e5c76a', description: 'Sweet, fermenting fruit', response: 'Food attraction' },
   tomato: { name: 'Fresh tomato', scent: 0.65, color: '#e08169', description: 'A softer scent to explore', response: 'Gentle attraction' },
@@ -31,8 +32,11 @@ export class Simulation {
     this.distress = 0; this.escapeX = 0; this.escapeZ = 0;
     this.environment = 'habitat'; this.watchScreen = false;
     this.training = newTraining(); this.life = newLife();
-    this.activity = new Float32Array(192); this.edges = [];
-    for (let i = 0; i < 192; i++) for (let j = 0; j < 4; j++) this.edges.push({ from: i, to: Math.floor(i / 48) * 48 + Math.floor(this.random() * 48), weight: 0.045 + this.random() * 0.055 });
+    this.activity = new Float32Array(NEURAL_UNITS); this.edges = [];
+    const neuralRandom=seededRandom(7853);
+    // Keep the existing behavior RNG sequence stable while expanding the network.
+    for(let i=0;i<1536;i++)this.random();
+    for (let i=0;i<NEURAL_UNITS;i++) for(let j=0;j<6;j++) this.edges.push({from:i,to:Math.floor(i/NEURAL_GROUP_SIZE)*NEURAL_GROUP_SIZE+Math.floor(neuralRandom()*NEURAL_GROUP_SIZE),weight:(.045+neuralRandom()*.055)*4/6});
     this.events = []; this.log('A little world, ready to explore.', 'system');
   }
   log(message, type = 'behavior') { this.events.unshift({ time: this.time, message, type }); this.events.length = Math.min(100, this.events.length); }
@@ -157,14 +161,14 @@ export class Simulation {
     const aheadX = this.x + Math.sin(this.heading) * 1.2, aheadZ = this.z + Math.cos(this.heading) * 1.2;
     this.caution = Math.max(this.memoryRisk(this.x, this.z), this.memoryRisk(aheadX, aheadZ)) * (1 - lure * 0.95);
     const external = [foodScore * (0.35 + this.hunger), avoidScore + this.caution * 0.45 + this.startle * 0.4 + this.distress * 0.7, this.energy * 0.23 + this.distress * 0.65, this.state === 'Feeding' ? 0.9 : 0.02];
-    const recurrent = new Float32Array(192);
+    const recurrent = new Float32Array(NEURAL_UNITS);
     for (const e of this.edges) recurrent[e.to] += this.activity[e.from] * e.weight;
     const groups = [0, 0, 0, 0];
-    for (let i = 0; i < 192; i++) {
-      const g = Math.floor(i / 48);
+    for (let i = 0; i < NEURAL_UNITS; i++) {
+      const g = Math.floor(i / NEURAL_GROUP_SIZE);
       const drive = clamp(external[g] + recurrent[i] + 0.015 * Math.sin(this.time * 4 + i), 0, 1);
       this.activity[i] += (drive - this.activity[i]) * Math.min(1, dt * 6);
-      groups[g] += this.activity[i] / 48;
+      groups[g] += this.activity[i] / NEURAL_GROUP_SIZE;
     }
     this.signals = { scent: groups[0], aversion: groups[1], motor: groups[2], reward: groups[3] };
     const previous = this.state;

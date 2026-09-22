@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './member-fixture.js';
 import { Simulation } from '../../src/simulation.js';
 import { ROOMS } from '../../src/life.js';
 import { encodeSession } from '../../src/session.js';
@@ -29,7 +29,7 @@ for (const room of ['habitat', 'fireescape', 'bar', 'rooftop']) test(`${room} re
   sim.life.action = sim.state = ROOMS[room].action; sim.life.actionUntil = 30; sim.heading = room === 'fireescape' ? 0 : Math.PI;
   if (room === 'habitat') { sim.life.tidiness = .15; sim.life.mood = .25; sim.life.motivation = .25; }
   const raw = encodeSession(sim, { paused: true });
-  await page.addInitScript(raw => { if (!localStorage.getItem('hiflyguy.world.v1')) localStorage.setItem('hiflyguy.world.v1', raw); }, raw);
+  await page.addInitScript(raw => { if (!localStorage.getItem('hiflyguy.account.test-creator.hiflyguy.world.v1')) localStorage.setItem('hiflyguy.account.test-creator.hiflyguy.world.v1', raw); }, raw);
   await page.goto('/'); await expect(page.locator('#viewport')).toHaveAttribute('data-fly-present', 'true');
   await expect(page.locator('#behavior-pill')).toHaveText(ROOMS[room].action);
   await expect(page.locator('#vitals-note')).not.toHaveText('undefined');

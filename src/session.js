@@ -1,3 +1,4 @@
+import { NEURAL_UNITS } from './simulation.js';
 import { decodeLife, isRoom, LIFE_STATES } from './life.js';
 import { Simulation, STIMULI, WORLD, seededRandom } from './simulation.js';
 import { decodeTraining, TRAINING_STATES } from './training.js';
@@ -44,7 +45,7 @@ export function decodeSession(raw) {
     if (!between(w.speed, 0, 10) || !between(w.startle, 0, 100) || !id(w.nextId) || !id(w.nextMemoryId)) return null;
     if (!Number.isInteger(w.randomState) || !between(w.randomState, 0, 4294967295) || !point(w.waypoint, WORLD.flyRadius)) return null;
     if (!w.signals || !['scent', 'aversion', 'motor', 'reward'].every(key => unit(w.signals[key]))) return null;
-    if (!Array.isArray(w.activity) || w.activity.length !== 192 || !w.activity.every(unit)) return null;
+    if (!Array.isArray(w.activity) || ![192,NEURAL_UNITS].includes(w.activity.length) || !w.activity.every(unit)) return null;
     if (!Array.isArray(w.objects) || w.objects.length > 48 || !w.objects.every(o => o && id(o.id) && Object.hasOwn(STIMULI, o.kind) && point(o, WORLD.objectRadius) && unit(o.amount) && (o.room === undefined || isRoom(o.room)))) return null;
     if (w.objects.some(o => w.objects.filter(p => (p.room ?? w.environment) === (o.room ?? w.environment)).length > 8)) return null;
     if (new Set(w.objects.map(o => o.id)).size !== w.objects.length || w.objects.some(o => o.id >= w.nextId)) return null;
@@ -58,7 +59,7 @@ export function decodeSession(raw) {
     sim.environment = w.environment; sim.watchScreen = w.watchScreen;
     sim.training = training; sim.life = life;
     sim.signals = Object.fromEntries(['scent', 'aversion', 'motor', 'reward'].map(key => [key, w.signals[key]]));
-    sim.activity.set(w.activity); sim.waypoint = { x: w.waypoint.x, z: w.waypoint.z };
+    sim.activity.set(w.activity.length===NEURAL_UNITS?w.activity:Array.from({length:NEURAL_UNITS},(_,i)=>w.activity[Math.floor(i/(NEURAL_UNITS/192))])); sim.waypoint = { x: w.waypoint.x, z: w.waypoint.z };
     sim.objects = w.objects.map(({ id, kind, x, z, amount, room = w.environment }) => ({ id, kind, x, z, amount, room }));
     sim.memories = w.memories.map(({ id, x, z, strength, encounters, lastEncounter, lastSeen, room = w.environment }) => ({ id, x, z, strength, encounters, lastEncounter, lastSeen, room }));
     sim.events = w.events.map(({ time, message, type }) => ({ time, message, type }));

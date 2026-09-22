@@ -1,5 +1,8 @@
 import { ROOMS, invite, setDeskFocus } from './life.js';
 import './style.css';
+import { setupMembership } from './membership.js';
+import { scopedStorage } from './access-policy.js';
+import { scienceHTML, helpHTML } from './world-copy.js';
 import './computer-room.css';
 import { Simulation, STIMULI, withinHabitat } from './simulation.js';
 import { Habitat, BrainView } from './scene.js';
@@ -32,12 +35,12 @@ const icon = (name, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 24 24" f
 const swatterArt = '<svg viewBox="0 0 100 75" aria-hidden="true"><g transform="rotate(30 50 35)"><path d="M48 39h4v28h-4z" fill="#b59065"/><rect x="46" y="60" width="8" height="12" rx="3" fill="#70785a"/><rect x="30" y="4" width="40" height="39" rx="8" fill="#b68a5950" stroke="#d8aa78" stroke-width="4"/><path d="M38 7v32m8-32v32m8-32v32m8-32v32M33 14h34M33 23h34M33 32h34" stroke="#c3b68b" stroke-width="1.5"/></g></svg>';
 const foodArt = kind => kind === 'banana' ? '<svg viewBox="0 0 100 75"><path d="M17 21c1 39 44 57 65 18C55 61 35 42 30 20z" fill="#e7c45f"/><path d="M23 24c7 29 30 39 50 21" fill="none" stroke="#aa8337" stroke-width="2"/><path d="m24 24-4-12 8-1 3 13M79 41l6-7" stroke="#84794a" stroke-width="5"/><path d="M33 42c4 6 10 11 17 13" stroke="#ffe6a0" stroke-width="3" fill="none"/></svg>' : kind === 'tomato' ? '<svg viewBox="0 0 100 75"><ellipse cx="50" cy="44" rx="27" ry="24" fill="#ca6350"/><ellipse cx="40" cy="38" rx="11" ry="10" fill="#df8068" opacity=".7"/><path d="m50 27-16-8 13 1 4-12 4 13 14-2-13 9-6-6z" fill="#87915b"/><path d="m51 23 3-14" stroke="#a2a777" stroke-width="4"/></svg>' : '<svg viewBox="0 0 100 75"><path d="m26 28-15-8v31l16-6m48-17 14-8v31l-15-6" fill="#abbcaf" opacity=".6"/><circle cx="50" cy="37" r="24" fill="#e3e3ce"/><g fill="#c87266"><path d="M50 37 41 15a24 24 0 0 1 15-1zM50 37l23-5a24 24 0 0 1-1 15zM50 37l-2 24a24 24 0 0 1-13-5zM50 37 28 29a24 24 0 0 1 8-10zM50 37l15 19a24 24 0 0 1-13 5z"/></g><circle cx="50" cy="37" r="23" fill="none" stroke="#f2eee0" opacity=".5"/></svg>';
 document.querySelector('#app').innerHTML = `
-<aside class="rail"><a class="brand-mark" href="./" aria-label="HiFlyGuy home">${icon('fly')}</a><div class="rail-links"><button class="rail-link selected" data-view="habitat" aria-label="Habitat" title="Habitat">${icon('habitat')}</button><button class="rail-link" data-open="science" aria-label="Brain and data" title="Brain and data">${icon('brain')}</button><button class="rail-link" data-open="log" aria-label="Experiment log" title="Experiment log">${icon('log')}</button></div><button class="rail-link rail-bottom" data-open="help" aria-label="How to play" title="How to play">${icon('info')}</button><span class="rail-version">01</span></aside>
+<aside class="rail"><a class="brand-mark" href="./" aria-label="HiFlyGuy home">${icon('fly')}</a><div class="rail-links"><button class="rail-link selected" data-view="habitat" aria-label="Habitat" title="Habitat">${icon('habitat')}</button><button class="rail-link" data-open="science" aria-label="Brain and data" title="Brain and data">${icon('brain')}</button><button class="rail-link" data-open="log" aria-label="Experiment log" title="Experiment log">${icon('log')}</button></div><button class="rail-link rail-bottom" data-open="help" aria-label="How to interact" title="How to interact">${icon('info')}</button><span class="rail-version">01</span></aside>
 <div class="shell">
   <header class="topbar"><a class="wordmark" href="./">HiFlyGuy<span>✳</span></a><span class="brand-caption">A little life. A whole world.</span><div class="top-right"><span class="local-label"><i class="status-dot"></i> <span id="save-label">LOCAL HABITAT</span></span><button class="quiet-btn" data-open="science">About this world ${icon('arrow')}</button></div></header>
   <main>
     <section class="page-heading"><div><div class="eyebrow">YOUR OWN LITTLE UNIVERSE</div><h1>Meet FlyGuy<span>.</span></h1><p>A curious little fly. An entire world to discover.</p></div><div class="session"><span class="eyebrow">SESSION TIME</span><div><i class="status-dot"></i><span id="session-time">00:00:00</span><span class="live-label" id="run-label">LIVE</span></div></div></section>
-    <div class="workspace-heading"><div class="tabs"><button class="tab active" data-view="habitat">${icon('habitat')} Habitat <span>01</span></button><button class="tab" data-open="log">${icon('log')} Experiment log</button></div><button class="model-badge" data-open="science"><span class="tiny-dot"></span> Simulated neural controller ${icon('info')}</button></div>
+    <div class="workspace-heading"><div class="tabs"><button class="tab active" data-view="habitat">${icon('habitat')} Habitat <span>01</span></button><button class="tab" data-open="log">${icon('log')} Experiment log</button></div><button class="model-badge" data-open="science"><span class="tiny-dot"></span> Fruit-fly brain model ${icon('info')}</button></div>
     <div class="workspace">
       <div class="world-column">
         <section class="viewport" id="viewport" aria-label="FlyGuy habitat">
@@ -50,7 +53,7 @@ document.querySelector('#app').innerHTML = `
           <div class="desk-controls" id="desk-controls" hidden><button id="watch-screen-btn" aria-pressed="true">Watch screen</button><button id="terminal-btn">Open terminal ${icon('expand')}</button></div>
           <div class="desk-caption" id="desk-caption" hidden><span>NIGHT DESK / MARKET OBSERVATORY</span><p>A little fly. A very big screen.</p><small>Watching is a simulated activity. Market data is separate.</small></div>
           <dialog id="terminal-dialog" aria-labelledby="terminal-title"><div class="terminal-dialog-head"><span id="terminal-title">FLYGUY / MARKET TERMINAL</span><button id="close-terminal" aria-label="Close market terminal">${icon('close')}</button></div><div id="terminal-mount"></div></dialog>
-          <div class="view-tools"><button id="focus-btn" title="Follow FlyGuy up close" aria-label="Follow FlyGuy up close" aria-pressed="false">${icon('focus')}</button><button id="scent-btn" title="Show scent fields" aria-label="Show scent fields" aria-pressed="false">${icon('scent')}</button><button id="camera-btn" title="Reset camera" aria-label="Reset camera">${icon('reset')}</button><button id="fullscreen-btn" title="Fullscreen habitat" aria-label="Fullscreen habitat">${icon('expand')}</button><button id="remove-selected-btn" title="Remove selected object" aria-label="Remove selected object" hidden>${icon('trash')}</button><button id="memory-btn" title="Show remembered areas" aria-label="Show remembered areas" aria-pressed="true" class="active">${icon('brain')}</button><button id="director-actions-btn" title="Actions" aria-label="Director actions" aria-haspopup="dialog" hidden>${icon('clapper')}</button></div>
+          <div class="view-tools"><button id="focus-btn" title="Follow FlyGuy up close" aria-label="Follow FlyGuy up close" aria-pressed="false">${icon('focus')}</button><button id="scent-btn" title="Show scent fields" aria-label="Show scent fields" aria-pressed="false">${icon('scent')}</button><button id="camera-btn" title="Reset camera" aria-label="Reset camera">${icon('reset')}</button><button id="fullscreen-btn" title="Fullscreen habitat" aria-label="Fullscreen habitat">${icon('expand')}</button><button id="remove-selected-btn" title="Remove selected object" aria-label="Remove selected object" hidden>${icon('trash')}</button><button id="memory-btn" title="Brain and data" aria-label="Brain and data" aria-haspopup="dialog">${icon('brain')}</button><button id="director-actions-btn" title="Actions" aria-label="Director actions" aria-haspopup="dialog" hidden>${icon('clapper')}</button></div>
           <div id="selection-label" class="selection-label" hidden></div>
           <div class="placement-banner" id="placement-banner" hidden><span id="placement-message"></span><button id="place-center">Place near FlyGuy</button><button id="cancel-placement" aria-label="Cancel placement">${icon('close')}</button></div>
           <div class="swatter-banner" id="swatter-banner" hidden><div><strong>FLY SWATTER</strong><span id="swatter-status">Move over the habitat to guide it.</span></div><span id="distress-value">Distress 0%</span><button id="put-away-swatter">Put away <kbd>Esc</kbd></button></div>
@@ -63,13 +66,13 @@ document.querySelector('#app').innerHTML = `
             <div class="inventory-slots">${Object.entries(STIMULI).map(([kind, o], i) => `<button class="inventory-slot" data-stimulus="${kind}" aria-label="Inventory: ${o.name.toLowerCase()}" aria-pressed="false" title="${o.name} (${i + 1})"><kbd>${i + 1}</kbd><div class="food-art">${foodArt(kind)}</div><span>${o.name}</span></button>`).join('')}<button class="inventory-slot" data-tool="swatter" aria-label="Inventory: fly swatter" aria-pressed="false" title="Fly Swatter (4)"><kbd>4</kbd><div class="food-art">${swatterArt}</div><span>Fly Swatter</span></button>${[5, 6].map(i => `<div class="inventory-slot empty" aria-label="Empty inventory slot ${i}"><kbd>${i}</kbd><span>—</span></div>`).join('')}</div>
           </div>
         </section>
-        <div class="playback"><div class="playback-left"><button class="play-button" id="pause-btn" aria-label="Pause simulation">${icon('pause')}</button><span id="playback-status">Simulation running</span><span class="playback-divider"></span><div class="speed-control" aria-label="Simulation speed"><button data-speed="0.5">½×</button><button data-speed="1" class="active">1×</button><button data-speed="2">2×</button></div></div><div class="playback-actions"><button class="quiet-btn" id="director-btn" aria-pressed="false">${icon('clapper')} Directors mode</button><button class="quiet-btn reset-world" id="reset-btn">${icon('reset')} Reset world</button></div></div>
+        <div class="playback"><div class="playback-left"><button class="play-button" id="pause-btn" aria-label="Pause virtual world">${icon('pause')}</button><span id="playback-status">Virtual World Running</span><span class="playback-divider"></span><div class="speed-control" aria-label="Simulation speed"><button data-speed="0.5">½×</button><button data-speed="1" class="active">1×</button><button data-speed="2">2×</button></div></div><div class="playback-actions"><button class="quiet-btn" id="director-btn" aria-pressed="false">${icon('clapper')} Directors mode</button><button class="quiet-btn reset-world" id="reset-btn">${icon('reset')} Reset world</button></div></div>
         <section class="interaction-section"><div class="section-heading"><div><span class="eyebrow">A LITTLE CURIOSITY GOES A LONG WAY</span><h2>Put something in his world.</h2></div><span class="step-label">SELECT → PLACE → OBSERVE</span></div><div class="stimulus-cards">${Object.entries(STIMULI).map(([kind, o]) => `<button class="stimulus-card" data-stimulus="${kind}" aria-label="Place ${o.name.toLowerCase()}"><div class="food-art ${kind}">${foodArt(kind)}</div><div class="stimulus-copy"><strong>${o.name}</strong><span>${o.description}</span><small><i style="background:${o.color}"></i>${o.response}</small></div><span class="add-circle">${icon('plus')}</span></button>`).join('')}</div><button class="swatter-launch" data-tool="swatter" aria-label="Use fly swatter" aria-pressed="false"><div class="food-art">${swatterArt}</div><span><strong>Fly Swatter</strong><small>A little chase. He always gets away.</small></span><kbd>4</kbd></button><div class="objects-footer"><span><i class="tiny-dot"></i> <span id="object-count">0 objects</span> in this room <span class="muted">/ 8 max</span></span><button class="text-button" id="clear-btn" disabled>Clear objects</button></div><div id="object-list" class="object-list"></div></section>
       </div>
       <aside class="telemetry">
-        <section class="neural-panel"><div class="panel-heading"><h2>${icon('brain')} A window into his world</h2><i class="status-dot"></i></div><div class="neural-subhead"><span>NEURAL ACTIVITY</span><button id="reset-brain-btn" class="outlined-tag" type="button" title="Reset neural map: show the entire map">ILLUSTRATIVE MAP</button></div><div id="brain-view" class="brain-view"><span class="brain-axis">DRAG TO ROTATE &middot; SCROLL / PINCH TO ZOOM</span></div><div class="brain-legend"><span><i></i> Quiet</span><div></div><span>Active <i></i></span></div><div class="network-stats"><div><strong>192</strong><span>MODEL UNITS</span></div><div><strong>768</strong><span>CONNECTIONS</span></div><button data-open="science" aria-label="About the simulated network">${icon('arrow')}</button></div><p class="data-caption">Synthetic network · FlyWire-inspired visualization</p></section>
+        <section class="neural-panel"><div class="panel-heading"><h2>${icon('brain')} A window into his world</h2><i class="status-dot"></i></div><div class="neural-subhead"><span>NEURAL ACTIVITY</span><button id="reset-brain-btn" class="outlined-tag" type="button" title="Reset neural map: show the entire map">BRAIN MODEL</button></div><div id="brain-view" class="brain-view"><span class="brain-axis">DRAG TO ROTATE &middot; SCROLL / PINCH TO ZOOM</span></div><div class="brain-legend"><span><i></i> Quiet</span><div></div><span>Active <i></i></span></div><div class="network-stats"><div><strong>768</strong><span>MODEL UNITS</span></div><div><strong>4,608</strong><span>CONNECTIONS</span></div><button data-open="science" aria-label="Explore the brain model">${icon('arrow')}</button></div><p class="data-caption">Fruit-fly-inspired brain model</p></section>
         <section class="vitals-panel"><div class="panel-heading"><h2>How’s our little guy?</h2><span class="pill" id="behavior-pill">Exploring</span></div><div class="vital"><span>Energy</span><div class="meter"><div id="energy-meter"></div></div><strong id="energy-value">85%</strong></div><div class="vital"><span>Hunger</span><div class="meter hunger"><div id="hunger-meter"></div></div><strong id="hunger-value">62%</strong></div><div class="vitals-note" id="vitals-note">A little wander. A lot to discover.</div></section>
-        <section class="signal-panel"><div class="panel-heading"><h2>Live signals</h2><span class="eyebrow">MODEL OUTPUT</span></div><div class="signal-metric"><span>Sensory response</span><strong><span id="signal-value">0.00</span> <small>0–1</small></strong></div><canvas id="signal-chart" aria-label="Recent simulated sensory response"></canvas><div class="signal-legend"><span><i></i> Attraction</span><span><i></i> Aversion</span><span>LAST 30s</span></div></section>
+        <section class="signal-panel"><div class="panel-heading"><h2>Live signals</h2><span class="eyebrow">MODEL OUTPUT</span></div><div class="signal-metric"><span>Sensory response</span><strong><span id="signal-value">0.00</span> <small>0–1</small></strong></div><canvas id="signal-chart" aria-label="Recent sensory response from the brain model"></canvas><div class="signal-legend"><span><i></i> Attraction</span><span><i></i> Aversion</span><span>LAST 30s</span></div></section>
         <section class="memory-panel"><div class="panel-heading"><h2>Learning his world</h2><span class="pill" id="memory-count">0 places</span></div><p class="memory-intro">Unpleasant encounters leave a little memory.</p><div id="memory-list"><p class="memory-empty">No wary spots yet. Let him discover a peppermint.</p></div><div class="memory-footnote">Dashed lavender circles mark remembered areas. Safe visits and time rebuild trust.</div></section>
         <section class="recent-panel"><div class="panel-heading"><h2>Little moments</h2><button class="text-button" data-open="log">View all ${icon('arrow')}</button></div><div id="recent-events" aria-live="polite"></div></section>
       </aside>
@@ -81,9 +84,12 @@ document.querySelector('#app').innerHTML = `
 
 const $ = s => document.querySelector(s);
 let storage; try { storage = window.localStorage; } catch { /* Private browser settings may disable storage. */ }
+const browserStorage=storage; storage=scopedStorage(browserStorage);
 const restored = loadSession(storage), sim = restored?.sim ?? new Simulation();
 let viewRoom = restored?.viewRoom ?? sim.environment, lastResidence = sim.environment;
-let director;
+let director, access;
+const allowed=(action,room=viewRoom)=>access?.allowed(action,room)??false;
+const authorize=(action,room=viewRoom)=>access?.require(action,room)??false;
 let habitat, brain, paused = restored?.paused ?? false, speed = restored?.speed ?? 1, placing = null, swatterEquipped = false, selectedId = null, history = [], lastSample = sim.time, lastUI = -1, toastTimer, logSignature = '', dialogMode;
 function saveWorld() {
   const saved = saveSession(storage, sim, { paused, speed, viewRoom });
@@ -96,6 +102,7 @@ const formatTime = (n, hours = false) => { const s = Math.floor(n); return (hour
 function toast(message) { $('#toast').textContent = message; $('#toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').hidden = true, 3500); }
 function cancelPlacement() { placing = null; swatterEquipped = false; sim.putAwaySwatter(); habitat?.setSwatter(false); habitat?.setPlacement(false); $('#placement-banner').hidden = true; $('#swatter-banner').hidden = true; document.querySelectorAll('[data-stimulus], [data-tool]').forEach(b => { b.classList.remove('selected'); b.setAttribute('aria-pressed', 'false'); }); }
 function equipSwatter() {
+  if(!authorize('interact'))return;
   if (!habitat) return;
   if (sim.environment !== viewRoom) return toast('FlyGuy is in another room. Use Find FlyGuy to visit him.');
   if (swatterEquipped) { cancelPlacement(); return; }
@@ -103,20 +110,22 @@ function equipSwatter() {
   document.querySelectorAll('[data-tool="swatter"]').forEach(b => { b.classList.add('selected'); b.setAttribute('aria-pressed', 'true'); });
 }
 function selectObject(id) {
+  if(id!==null&&!allowed('interact'))return;
   selectedId = sim.objects.some(o => o.id === id) ? id : null;
   habitat?.setSelected(selectedId); $('#remove-selected-btn').hidden = selectedId === null; $('#selection-label').hidden = selectedId === null;
   if (selectedId !== null) $('#selection-label').textContent = `${STIMULI[sim.objects.find(o => o.id === selectedId).kind].name} selected · trash to remove`;
 }
 function removeObject(id) {
+  if(!authorize('interact'))return;
   const object = sim.objects.find(o => o.id === id); if (!object) return;
   sim.remove(id); sim.log(`${STIMULI[object.kind].name} removed.`, 'object');
   if (selectedId === id) selectObject(null);
   renderObjects(); toast(object.kind === 'peppermint' && sim.memories.length ? 'Peppermint removed. FlyGuy still remembers what happened here.' : 'Object removed from the habitat.');
   saveWorld();
 }
-function place(x, z) { if (!placing) return; const o = sim.add(placing, x, z, viewRoom); if (o) { toast(`${STIMULI[placing].name} added. Let’s see what happens.`); cancelPlacement(); renderObjects(); saveWorld(); } else { toast('Eight objects is plenty for this little world. Remove one first.'); cancelPlacement(); } }
-try { habitat = new Habitat($('#viewport'), place, selectObject, (x, z) => { if (x === null) sim.putAwaySwatter(); else if (viewRoom === sim.environment) sim.aimSwatter(x, z); }, index => { sim.training.selected = index; selectObject(null); saveWorld(); }); brain = new BrainView($('#brain-view')); } catch (error) { console.error(error); $('#render-error').hidden = false; $('#render-error').textContent = 'The 3D view needs WebGL. Enable hardware acceleration in your browser, then reload HiFlyGuy.'; }
-setupTrainingUI(sim, saveWorld, toast, cancelPlacement);
+function place(x, z) { if (!placing) return; if(!allowed(placing==='peppermint'?'interact':'food',viewRoom)){cancelPlacement();return toast('Visitors can leave fruit in the Habitat. Choose that room first.');} const o = sim.add(placing, x, z, viewRoom); if (o) { toast(`${STIMULI[placing].name} added. Let’s see what happens.`); cancelPlacement(); renderObjects(); saveWorld(); } else { toast('Eight objects is plenty for this little world. Remove one first.'); cancelPlacement(); } }
+try { habitat = new Habitat($('#viewport'), place, selectObject, (x, z) => { if (x === null) sim.putAwaySwatter(); else if (allowed('interact') && viewRoom === sim.environment) sim.aimSwatter(x, z); }, index => { if(!allowed('interact'))return; sim.training.selected = index; selectObject(null); saveWorld(); }); brain = new BrainView($('#brain-view')); } catch (error) { console.error(error); $('#render-error').hidden = false; $('#render-error').textContent = 'The 3D view needs WebGL. Enable hardware acceleration in your browser, then reload HiFlyGuy.'; }
+setupTrainingUI(sim, saveWorld, toast, cancelPlacement, ()=>authorize('interact'));
 $('#vitals-note').insertAdjacentHTML('beforebegin', '<div class="vital"><span>Mood</span><div class="meter mood"><div id="mood-meter"></div></div><strong id="mood-value">Content</strong></div><p id="life-details" class="life-details"></p><p id="life-habits" class="life-details"></p>');
 
 function refreshEnvironment() {
@@ -141,20 +150,20 @@ function viewEnvironment(room) {
 }
 document.querySelectorAll('button[data-environment]').forEach(b => b.onclick = () => viewEnvironment(b.dataset.environment));
 $('#find-fly').onclick = () => { viewEnvironment(sim.environment); habitat?.frame(true); };
-$('#invite-fly').onclick = () => { invite(sim, viewRoom); saveWorld(); toast(paused ? 'Invitation saved. Resume time so he can come over.' : sim.environment === viewRoom ? 'He will stay with you for a little while.' : 'He is on his way. Watch for him at the doorway.'); };
-$('#autonomy-btn').onclick = () => { sim.life.autonomous = !sim.life.autonomous; saveWorld(); updateUI(); toast(sim.life.autonomous ? 'Free to choose his own rooms and routines.' : 'New routines paused. His current visit will finish.'); };
-$('#adderall-btn').onclick = () => {
+$('#invite-fly').onclick = () => { if(!authorize('interact'))return; invite(sim, viewRoom); saveWorld(); toast(paused ? 'Invitation saved. Resume time so he can come over.' : sim.environment === viewRoom ? 'He will stay with you for a little while.' : 'He is on his way. Watch for him at the doorway.'); };
+$('#autonomy-btn').onclick = () => { if(!authorize('interact'))return; sim.life.autonomous = !sim.life.autonomous; saveWorld(); updateUI(); toast(sim.life.autonomous ? 'Free to choose his own rooms and routines.' : 'New routines paused. His current visit will finish.'); };
+$('#adderall-btn').onclick = () => { if(!authorize('interact'))return;
   cancelPlacement(); setDeskFocus(sim, !sim.life.deskFocus); saveWorld(); updateUI();
   toast(sim.life.deskFocus ? (paused ? 'Resume to send FlyGuy to the desk.' : 'Locked in. Markets change every six seconds once he settles.') : 'Desk session finished.');
 };
-$('#watch-screen-btn').onclick = () => {
+$('#watch-screen-btn').onclick = () => { if(!authorize('interact'))return;
   if (sim.life.deskFocus) setDeskFocus(sim, false);
   sim.watchScreen = !sim.watchScreen;
   $('#watch-screen-btn').setAttribute('aria-pressed', String(sim.watchScreen));
   $('#watch-screen-btn').textContent = sim.watchScreen ? 'Watching enabled' : 'Watch screen';
   toast(sim.watchScreen ? 'FlyGuy will head to the laptop when he has a quiet moment.' : 'Free to roam the desk.'); saveWorld();
 };
-$('#terminal-btn').onclick = () => {
+$('#terminal-btn').onclick = () => { if(!authorize('interact'))return;
   const room = habitat?.computerRoom; if (!room) return;
   cancelPlacement(); moveTerminal($('#terminal-mount')); $('#terminal-dialog').showModal(); $('#close-terminal').focus();
 };
@@ -163,9 +172,12 @@ $('#close-terminal').onclick = () => $('#terminal-dialog').close();
 $('#terminal-dialog').addEventListener('close', () => { moveTerminal(habitat.computerRoom.display); $('#terminal-btn').focus(); });
 window.addEventListener('message', e => { if (e.origin === location.origin && e.source === habitat?.computerRoom?.iframe.contentWindow && e.data?.type === 'terminal-escape') $('#terminal-dialog').close(); });
 refreshEnvironment();
-director = setupDirector({ viewport: $('#viewport'), prepare: () => { cancelPlacement(); selectObject(null); $('#dialog').close(); $('#terminal-dialog').close(); saveWorld(); } });
+director = setupDirector({ authorize:()=>authorize('director'), allowed:()=>allowed('director'), viewport: $('#viewport'), prepare: () => { cancelPlacement(); selectObject(null); $('#dialog').close(); $('#terminal-dialog').close(); saveWorld(); } });
 
 function selectStimulus(kind) {
+  if(kind==='peppermint'&&!authorize('interact'))return;
+  if(kind!=='peppermint'&&!allowed('food',viewRoom)){toast('Leave fruit in the Habitat. FlyGuy can find it when he returns.');viewEnvironment('habitat');}
+  if(!allowed(kind==='peppermint'?'interact':'food',viewRoom))return;
   if (!habitat) return toast('Enable WebGL to place objects in the 3D habitat.');
   if (sim.roomObjects(viewRoom).length >= 8) return toast('Habitat full. Remove an object to make a little room.');
   cancelPlacement(); selectObject(null); placing = kind;
@@ -179,9 +191,9 @@ window.addEventListener('blur', () => sim.putAwaySwatter());
 $('#reset-brain-btn').onclick = () => brain?.resetView();
 $('#cancel-placement').onclick = cancelPlacement;
 $('#place-center').onclick = () => { const p = withinHabitat(viewRoom === sim.environment ? sim.x + 1.8 : 0, viewRoom === sim.environment ? sim.z + .7 : 2); place(p.x, p.z); };
-function setPaused(value) { paused = value; $('#pause-btn').innerHTML = icon(paused ? 'play' : 'pause'); $('#pause-btn').setAttribute('aria-label', paused ? 'Resume simulation' : 'Pause simulation'); $('#playback-status').textContent = paused ? 'Simulation paused' : 'Simulation running'; $('#run-label').textContent = paused ? 'PAUSED' : 'LIVE'; document.body.classList.toggle('paused', paused); saveWorld(); }
-$('#pause-btn').onclick = () => setPaused(!paused);
-document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => { speed = +b.dataset.speed; saveWorld(); document.querySelectorAll('[data-speed]').forEach(c => c.classList.toggle('active', b === c)); toast(`Time moves at ${speed}× speed.`); });
+function setPaused(value) { paused = value; $('#pause-btn').innerHTML = icon(paused ? 'play' : 'pause'); $('#pause-btn').setAttribute('aria-label', paused ? 'Resume virtual world' : 'Pause virtual world'); $('#playback-status').textContent = paused ? 'Virtual World Paused' : 'Virtual World Running'; $('#run-label').textContent = paused ? 'PAUSED' : 'LIVE'; document.body.classList.toggle('paused', paused); saveWorld(); }
+$('#pause-btn').onclick = () => {if(authorize('interact'))setPaused(!paused);};
+document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => { if(!authorize('interact'))return; speed = +b.dataset.speed; saveWorld(); document.querySelectorAll('[data-speed]').forEach(c => c.classList.toggle('active', b === c)); toast(`Time moves at ${speed}× speed.`); });
 $('#focus-btn').onclick = () => { if (!habitat) return; if (viewRoom !== sim.environment) viewEnvironment(sim.environment); habitat.frame(!habitat.follow); $('#focus-btn').classList.toggle('active', habitat.follow); $('#focus-btn').setAttribute('aria-pressed', String(habitat.follow)); };
 $('#camera-btn').onclick = () => { habitat?.frame(); $('#focus-btn').classList.remove('active'); $('#focus-btn').setAttribute('aria-pressed', 'false'); };
 $('#scent-btn').onclick = () => { if (!habitat) return; habitat.showScent = !habitat.showScent; $('#scent-btn').classList.toggle('active', habitat.showScent); $('#scent-btn').setAttribute('aria-pressed', String(habitat.showScent)); toast(habitat.showScent ? 'Scent fields visible. Place an object to see its reach.' : 'Scent fields hidden.'); };
@@ -192,9 +204,9 @@ document.addEventListener('fullscreenchange', () => {
   $('#fullscreen-btn').setAttribute('aria-label', full ? 'Exit fullscreen habitat' : 'Fullscreen habitat'); $('#fullscreen-btn').title = full ? 'Exit fullscreen habitat' : 'Fullscreen habitat';
 });
 $('#remove-selected-btn').onclick = () => removeObject(selectedId);
-$('#memory-btn').onclick = () => { if (!habitat) return; habitat.showMemory = !habitat.showMemory; $('#memory-btn').classList.toggle('active', habitat.showMemory); $('#memory-btn').setAttribute('aria-pressed', String(habitat.showMemory)); };
-$('#clear-btn').onclick = () => { sim.clear(viewRoom); selectObject(null); renderObjects(); cancelPlacement(); saveWorld(); toast('Objects cleared. Learned memories remain until they fade or you reset.'); };
-$('#reset-btn').onclick = () => { sim.reset(); viewRoom = 'habitat'; lastResidence = sim.environment; refreshEnvironment(); selectObject(null); history = []; lastSample = 0; logSignature = ''; habitat?.resetTrail(); habitat?.frame(); $('#focus-btn').classList.remove('active'); $('#focus-btn').setAttribute('aria-pressed', 'false'); setPaused(false); cancelPlacement(); renderObjects(); saveWorld(); toast('A new beginning for FlyGuy.'); };
+$('#memory-btn').onclick = () => openDialog('science');
+$('#clear-btn').onclick = () => { if(!authorize('interact'))return; sim.clear(viewRoom); selectObject(null); renderObjects(); cancelPlacement(); saveWorld(); toast('Objects cleared. Learned memories remain until they fade or you reset.'); };
+$('#reset-btn').onclick = () => { if(!authorize('interact'))return; sim.reset(); viewRoom = 'habitat'; lastResidence = sim.environment; refreshEnvironment(); selectObject(null); history = []; lastSample = 0; logSignature = ''; habitat?.resetTrail(); habitat?.frame(); $('#focus-btn').classList.remove('active'); $('#focus-btn').setAttribute('aria-pressed', 'false'); setPaused(false); cancelPlacement(); renderObjects(); saveWorld(); toast('A new beginning for FlyGuy.'); };
 function renderObjects() {
   const objects = sim.roomObjects(viewRoom);
   $('#object-count').textContent = `${objects.length} object${objects.length === 1 ? '' : 's'}`; $('#clear-btn').disabled = !objects.length;
@@ -204,29 +216,28 @@ function renderObjects() {
 const escapeHTML = value => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const eventHTML = e => `<div class="event"><span class="event-dot ${e.type}"></span><p>${escapeHTML(e.message)}<time>${formatTime(e.time)}</time></p></div>`;
 function renderLog() { return `<h2>A collection of little moments.</h2><p class="dialog-intro">Every new object, every change of direction. This is FlyGuy’s current session.</p><button class="secondary-btn" id="export-log">${icon('download')} Export session</button><div class="full-log">${sim.events.map(eventHTML).join('')}</div>`; }
-const scienceHTML = `<h2>A tiny brain.<br>A big inspiration.</h2><p class="dialog-intro">FlyWire mapped the connections in a real fruit fly brain. HiFlyGuy is our playful first step toward exploring that world.</p><div class="science-callout"><span class="eyebrow">WHAT IS RUNNING RIGHT NOW</span><h3>A synthetic neural controller</h3><p>192 simulated rate units and 768 generated connections react to nearby scents. Their activity helps select food seeking and avoidance; a scripted movement controller steers the fly. Energy, hunger, feeding, and rest are simplified virtual-pet rules. A separate spatial association model remembers unpleasant encounters, steers around learned areas, and weakens those memories with time and safe visits. This is an authored learning rule, not learning from a FlyWire circuit.</p><p>The glowing brain is an illustrative point cloud. It is not a scan, recorded neural activity, or a FlyWire neuron reconstruction. Food preferences are authored demonstration settings, not validated biological predictions.</p></div><h3>The real map behind the inspiration</h3><p>FlyWire’s FAFB v783 resource lists 139,255 neurons. A connectome describes wiring; it does not on its own recreate a living fly or establish consciousness. No FlyWire dataset is loaded in this version.</p><div class="source-links"><a href="https://codex.flywire.ai/" target="_blank" rel="noreferrer">Explore the FlyWire atlas ${icon('arrow')}</a><a href="https://zenodo.org/records/10676866" target="_blank" rel="noreferrer">Public connectivity datasets ${icon('arrow')}</a><a href="https://www.nature.com/articles/s41586-024-07763-9" target="_blank" rel="noreferrer">Read about connectome-based simulation ${icon('arrow')}</a></div><h3>Where we can take it next</h3><p>Import a documented circuit subset, preserve neuron IDs and synaptic weights, and connect it to a calibrated sensory model. A full brain-and-body simulation is a separate research and computing project.</p><p class="dialog-footnote">Independent project. Not affiliated with FlyWire, Princeton, or the Fly Guy books. This original fly model is a stylized interpretation of a fruit fly.</p>`;
-function openDialog(mode) {
-  dialogMode = mode; $('#dialog-kicker').textContent = mode === 'science' ? 'THE SCIENCE & THE SIMULATION' : mode === 'log' ? 'FLYGUY’S FIELD NOTES' : 'WELCOME TO YOUR LITTLE WORLD';
-  $('#dialog-body').innerHTML = mode === 'science' ? scienceHTML : mode === 'log' ? renderLog() : `<h2>A world at your fingertips.</h2><div class="help-step"><b>01</b><p><strong>Get to know him.</strong>Drag the habitat to orbit. Scroll or pinch to zoom. Use the focus button for a close-up that follows FlyGuy.</p></div><div class="help-step"><b>02</b><p><strong>Leave a little surprise.</strong>Select a banana, tomato, or peppermint, then click the habitat floor. “Place near FlyGuy” works with a keyboard, too.</p></div><div class="help-step"><b>03</b><p><strong>Watch what happens.</strong>His model responds to fruit with attraction and peppermint with avoidance. Watch the signals and experiment log change.</p></div><p>Pause with <kbd>Space</kbd>. Cancel placement with <kbd>Esc</kbd>. Energy recovers when he feeds or rests.</p><p>In fullscreen, use the six-slot inventory or keys <kbd>1</kbd> to <kbd>4</kbd> to choose an object. Click a placed object to select it, then use the trash button or <kbd>Delete</kbd> to remove it.</p><p>The Fly Swatter in slot 4 follows your mouse or touch drag. Bringing it close makes FlyGuy panic and dart away faster than the swatter. It cannot injure him. Escape puts it away; moving off the habitat lets him settle down.</p><p>Lavender dashed circles show learned caution. Peppermint memories remain after removal; safe visits, food, and time help him return. Reset clears all memories.</p><p class="dialog-footnote">Your world saves automatically in this browser and resumes after a reload. Reset world starts over and replaces the saved world. The neural map and behaviors are simulated.</p>`;
-  if (mode === 'science') $('.science-callout').insertAdjacentHTML('beforeend', '<p>The apartment routines, mood, motivation, smoking, drinking, and habits are fictional character mechanics. They are not biological predictions or evidence of feelings or consciousness. Room condition reflects the pet care model.</p>');
-  if (mode === 'help') $('#dialog-body').insertAdjacentHTML('beforeend', '<h3>A life across six rooms</h3><p>Room tabs move your camera. FlyGuy keeps living in his own room. The small dot shows his location; Find FlyGuy takes you there. Invite here asks him to travel through the connecting rooms, and Stay with me gives you two minutes together. Free will controls new autonomous routines. He can smoke on the fire escape, order another drink at the bar, rest upstairs, or watch the skyline. Food and memories stay in the room where you placed them. Everything pauses and saves together.</p>');
-  if (mode === 'science') $('.science-callout').insertAdjacentHTML('beforeend', '<p>Playground training uses an authored reinforcement rule: rewarding a completed cue increases a stored skill value. Skill and bond change response latency and cue acceptance; missed or interrupted attempts do not earn progress. The Bond bar is a virtual-pet relationship mechanic. The human hologram marks your cue source; it is not evidence of human recognition, subjective awareness, or a conscious fly.</p>');
-  if (mode === 'help') $('#dialog-body').insertAdjacentHTML('beforeend', '<h3>Playground: learn a little trick</h3><p>Choose Playground, select a landing pad, then Practice call. Wait for the landing and Give a treat during the reward window. Try Call FlyGuy to test the learned cue. Bond and recall unlock tumble practice; rewarded tumbles unlock a full Backflip. Training &amp; bond collapses the controls for a clear view. All progress saves with your world.</p>');
-  if (mode === 'log') $('#export-log').onclick = () => { const data = { project: 'HiFlyGuy', model: 'synthetic-rate-network-v2-spatial-memory', flywireDataLoaded: false, simulatedSeconds: sim.time, objects: sim.objects, memories: sim.memories, training: sim.training, life: sim.life, environment: sim.environment, viewRoom, events: sim.events }; const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = 'hiflyguy-session.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); };
-  $('#dialog').showModal();
+function restoreBrain(){const view=$('#brain-view');if(view&&view.parentElement.id==='science-brain')$('.neural-panel').insertBefore(view,$('.brain-legend'));}
+function openDialog(mode){
+  restoreBrain();dialogMode=mode;$('#dialog-kicker').textContent=mode==='science'?'BRAIN & DATA':mode==='log'?'FLYGUY FIELD NOTES':'HOW TO INTERACT';
+  $('#dialog-body').innerHTML=mode==='science'?scienceHTML:mode==='log'?renderLog():helpHTML(allowed('interact'),!!access?.state.user,allowed('director'));
+  if(mode==='science')$('#science-brain').append($('#brain-view'));
+  if(mode==='log')$('#export-log').onclick=()=>{const data={project:'HiFlyGuy',model:'fruit-fly-inspired-rate-network',flywireDataLoaded:false,simulatedSeconds:sim.time,objects:sim.objects,memories:sim.memories,training:sim.training,life:sim.life,environment:sim.environment,viewRoom,events:sim.events};const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='hiflyguy-session.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+  if(!$('#dialog').open)$('#dialog').showModal();
 }
+$('#dialog').addEventListener('close',restoreBrain);
+
 document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openDialog(b.dataset.open));
 $('#close-dialog').onclick = () => $('#dialog').close();
 $('#dialog').addEventListener('click', e => { if (e.target === $('#dialog')) { const r = $('#dialog').getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) $('#dialog').close(); } });
 document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { $('#dialog').close(); $('#viewport').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
 document.addEventListener('keydown', e => {
-  if (director?.busy) return;
+  if (director?.busy || access?.busy) return;
   const editing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable;
   if (e.key === 'Escape') { cancelPlacement(); selectObject(null); }
   if ($('#dialog').open || $('#terminal-dialog').open || editing || e.repeat) return;
   if (['1', '2', '3', '4'].includes(e.key)) { e.preventDefault(); if (e.key === '4') equipSwatter(); else selectStimulus(Object.keys(STIMULI)[+e.key - 1]); }
   if (e.key === 'Delete' && selectedId !== null) { e.preventDefault(); removeObject(selectedId); }
-  if (e.code === 'Space' && !['BUTTON', 'A'].includes(document.activeElement.tagName)) { e.preventDefault(); setPaused(!paused); }
+  if (e.code === 'Space' && !['BUTTON', 'A'].includes(document.activeElement.tagName)) { e.preventDefault(); if(authorize('interact'))setPaused(!paused); }
 });
 
 function chart() {
@@ -238,7 +249,7 @@ function chart() {
   for (const [key, color] of [['scent', '#dce9a0'], ['aversion', '#80b7a5']]) { ctx.strokeStyle = color; ctx.lineWidth = 1.5 * d; ctx.beginPath(); history.forEach((s, i) => { const x = w - ((sim.time - s.time) / 30) * w, y = h - 7 * d - s[key] * (h - 14 * d); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }); ctx.stroke(); }
 }
 function updateUI() {
-  updateTrainingUI(sim, paused || sim.environment !== 'playground');
+  updateTrainingUI(sim, !allowed('interact') || paused || sim.environment !== 'playground');
   const present = sim.environment === viewRoom, l = sim.life;
   if (lastResidence !== sim.environment) { cancelPlacement(); lastResidence = sim.environment; saveWorld(); }
   $('#actual-room').textContent = ROOMS[sim.environment].name;
@@ -275,6 +286,26 @@ function updateUI() {
   if (signature !== logSignature) { logSignature = signature; $('#recent-events').innerHTML = sim.events.slice(0, 3).map(eventHTML).join(''); if ($('#dialog').open && dialogMode === 'log') $('.full-log').innerHTML = sim.events.map(eventHTML).join(''); }
   chart();
 }
+let memberUid='guest',previousAccess=false;
+function applyMembership(state){
+  const uid=state.user?.uid??'guest',paid=access?.allowed('interact')??false;
+  if(uid!==memberUid){
+    saveWorld();cancelPlacement();selectObject(null);storage=scopedStorage(browserStorage,uid);
+    const saved=loadSession(storage);Object.assign(sim,saved?.sim??new Simulation());
+    paused=saved?.paused??false;speed=saved?.speed??1;viewRoom=saved?.viewRoom??sim.environment;lastResidence=sim.environment;
+    history=[];lastSample=sim.time;logSignature='';habitat?.resetTrail();refreshEnvironment();memberUid=uid;setPaused(paused);document.querySelectorAll('[data-speed]').forEach(b=>b.classList.toggle('active',+b.dataset.speed===speed));
+  }
+  if(!paid){
+    if(previousAccess||sim.swatter.active)cancelPlacement();
+    if(sim.training.active||sim.training.pending)sim.cancelLesson();
+    sim.life.autonomous=true;sim.life.holdUntil=0;if(sim.life.deskFocus)setDeskFocus(sim,false);sim.watchScreen=false;speed=1;
+    if(paused)setPaused(false);
+  }
+  previousAccess=paid;
+  const locked='[data-tool="swatter"],[data-stimulus="peppermint"],#training-toggle,#invite-fly,#autonomy-btn,#adderall-btn,#watch-screen-btn,#terminal-btn,#pause-btn,[data-speed],#reset-btn,#clear-btn';
+  document.querySelectorAll(locked).forEach(button=>{button.classList.toggle('access-locked',!paid);button.setAttribute('aria-description',paid?'':'Membership required');});
+  $('#director-btn').hidden=!allowed('director');if(!allowed('director'))$('#director-actions-btn').hidden=true;
+}
 let previous = performance.now(), accumulator = 0;
 function animate(now) {
   requestAnimationFrame(animate); const rawElapsed = Math.max(0, (now - previous) / 1000), elapsed = Math.min(rawElapsed, 0.1); previous = now;
@@ -294,3 +325,5 @@ window.addEventListener('pagehide', saveWorld);
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveWorld(); });
 if (restored) toast('Welcome back. FlyGuy and his world are right where you left them.');
 requestAnimationFrame(animate);
+
+access=setupMembership({onChange:state=>queueMicrotask(()=>applyMembership(state)),onEnter:()=>{if(!allowed('interact')){sim.life.autonomous=true;setPaused(false);}}});

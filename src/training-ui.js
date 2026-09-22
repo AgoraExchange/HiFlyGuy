@@ -11,17 +11,17 @@ export const playgroundControls = `<div id="playground-controls" hidden><button 
 <div class="lesson-foot"><span id="lesson-pause">Practice → complete → reward</span><button id="end-lesson">End lesson</button></div>
 </section>`;
 export const trainingPanel = `<section class="training-panel"><div class="panel-heading"><h2>Learning with you</h2><span class="pill" id="training-stage">New friends</span></div><p>Care builds familiarity. Rewarded practice builds skills.</p><div class="skill-row"><span>Recall <b id="call-skill">8%</b></span><div class="skill-meter"><i id="call-progress"></i></div><small id="call-chance"></small></div><div class="skill-row"><span>Backflip <b id="flip-skill">0%</b></span><div class="skill-meter"><i id="flip-progress"></i></div><small id="flip-unlock">Build bond and recall to unlock.</small></div><div class="training-history-title">RECENT PRACTICE</div><div id="training-history"><p>His first little lesson is waiting in the Playground.</p></div><small class="training-model-note">Virtual-pet learning · progress saved in this browser.</small></section>`;
-export function setupTrainingUI(sim, save, toast, cancelPlacement) {
+export function setupTrainingUI(sim, save, toast, cancelPlacement, authorize=()=>true) {
   document.querySelector('.vitals-panel').insertAdjacentHTML('afterend', trainingPanel);
   document.querySelector('#vitals-note').insertAdjacentHTML('beforebegin', '<div class="vital"><span>Bond</span><div class="meter bond"><div id="bond-meter"></div></div><strong id="bond-value">12%</strong></div>');
-  document.querySelector('#training-toggle').onclick = e => { const button = e.currentTarget, open = button.getAttribute('aria-expanded') !== 'true'; button.setAttribute('aria-expanded', String(open)); document.querySelector('#training-dock').hidden = !open; };
-  document.querySelector('#perch-select').onchange = e => { sim.training.selected = e.target.value === 'you' ? 'you' : +e.target.value; save(); };
-  document.querySelectorAll('[data-lesson]').forEach(button => button.onclick = () => {
+  document.querySelector('#training-toggle').onclick = e => { if(!authorize())return; const button = e.currentTarget, open = button.getAttribute('aria-expanded') !== 'true'; button.setAttribute('aria-expanded', String(open)); document.querySelector('#training-dock').hidden = !open; };
+  document.querySelector('#perch-select').onchange = e => { if(!authorize())return; sim.training.selected = e.target.value === 'you' ? 'you' : +e.target.value; save(); };
+  document.querySelectorAll('[data-lesson]').forEach(button => button.onclick = () => { if(!authorize())return;
     if (document.body.classList.contains('paused')) return toast('Resume the simulation to start a lesson.');
     cancelPlacement(); if (button.dataset.destination === 'you') sim.training.selected = 'you'; sim.requestLesson(button.dataset.lesson, button.dataset.guided === 'true'); save();
   });
-  document.querySelector('#reward-btn').onclick = () => { if (!document.body.classList.contains('paused') && sim.rewardLesson()) { toast('A tiny treat. A little more trust.'); save(); } };
-  document.querySelector('#end-lesson').onclick = () => { sim.cancelLesson(); save(); };
+  document.querySelector('#reward-btn').onclick = () => { if(!authorize())return; if (!document.body.classList.contains('paused') && sim.rewardLesson()) { toast('A tiny treat. A little more trust.'); save(); } };
+  document.querySelector('#end-lesson').onclick = () => { if(!authorize())return; sim.cancelLesson(); save(); };
 }
 export function updateTrainingUI(sim, paused) {
   const $ = s => document.querySelector(s), t = sim.training, percent = n => `${Math.round(n * 100)}%`;

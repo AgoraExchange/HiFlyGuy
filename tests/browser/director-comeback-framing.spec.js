@@ -1,4 +1,4 @@
-import {test,expect} from '@playwright/test';
+import {test,expect} from './member-fixture.js';
 
 test('Comeback shoes and seated desk pose stay attached, grounded and separated',async({page})=>{
   test.setTimeout(60000);const errors=[];page.on('pageerror',e=>errors.push(e.message));

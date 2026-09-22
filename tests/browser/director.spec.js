@@ -1,11 +1,11 @@
-﻿import {test,expect} from '@playwright/test';
+﻿import {test,expect} from './member-fixture.js';
 async function fixtures(page){
  await page.route('https://api.coinbase.com/**',route=>{const symbol=route.request().url().match(/prices\/(\w+)-USD/)[1];return route.fulfill({json:{data:{amount:String({BTC:78000,ETH:2500,SOL:106}[symbol]),base:symbol,currency:'USD'}}});});
  await page.route('https://s3.tradingview.com/**',r=>r.abort());
 }
 test('Director action hides UI, plays every shot, replays, and leaves the world intact',async({page})=>{
  test.setTimeout(70000);const errors=[];page.on('pageerror',e=>errors.push(e.message));await fixtures(page);await page.goto('/');
- await page.locator('#pause-btn').click();const before=await page.evaluate(()=>JSON.parse(localStorage.getItem('hiflyguy.world.v1')));
+ await page.locator('#pause-btn').click();const before=await page.evaluate(()=>JSON.parse(localStorage.getItem('hiflyguy.account.test-creator.hiflyguy.world.v1')));
  await expect(page.locator('#director-actions-btn')).toBeHidden();
  await page.locator('#director-btn').click();await expect(page.locator('#director-actions-btn')).toBeVisible();
  expect(await page.locator('#memory-btn').evaluate(e=>e.nextElementSibling.id)).toBe('director-actions-btn');
@@ -21,11 +21,11 @@ test('Director action hides UI, plays every shot, replays, and leaves the world 
  const wallet=page.frameLocator('iframe[title="Aster Wallet cinematic display"]');await expect(wallet.locator('#portfolio')).toBeVisible();await expect(wallet.locator('#wallet-total')).not.toHaveText('\u2014');await page.screenshot({path:'test-results/director-wallet.png'});
  await expect(page.locator('#director-frame')).toHaveAttribute('data-shot','chair',{timeout:6000});await page.waitForTimeout(2600);await page.screenshot({path:'test-results/director-chair.png'});
  await expect(page.locator('#director-finish')).toBeVisible({timeout:5000});
- const after=await page.evaluate(()=>JSON.parse(localStorage.getItem('hiflyguy.world.v1')));delete before.savedAt;delete after.savedAt;expect(after).toEqual(before);
+ const after=await page.evaluate(()=>JSON.parse(localStorage.getItem('hiflyguy.account.test-creator.hiflyguy.world.v1')));delete before.savedAt;delete after.savedAt;expect(after).toEqual(before);
  await page.locator('#director-replay').click();await expect(page.locator('#director-frame')).toHaveAttribute('data-shot','elevator');await expect(page.locator('#director-cinema')).toHaveAttribute('data-state','lead-in');
  await page.locator('#director-frame').dblclick();await expect(page.locator('#director-finish-title')).toContainText('Take stopped');
  await page.locator('#director-return').click();await expect(page.locator('#director-cinema')).toBeHidden();await expect(page.locator('.view-tools')).toBeVisible();
- await expect(page.locator('#pause-btn')).toHaveAttribute('aria-label','Resume simulation');
+ await expect(page.locator('#pause-btn')).toHaveAttribute('aria-label','Resume virtual world');
  await page.locator('#director-btn').click();await expect(page.locator('#director-actions-btn')).toBeHidden();
  expect(errors).toEqual([]);
 });
