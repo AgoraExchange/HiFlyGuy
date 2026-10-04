@@ -1,3 +1,4 @@
+import { roofWaypoint } from './room-navigation.js';
 import { newLife, updateLife, lifeMotion, roomHeight, ROOMS, LIFE_STATES } from './life.js';
 // A deliberately small, synthetic rate network. No FlyWire records are loaded.
 import { newTraining, updateTraining, requestLesson, rewardLesson, cancelLesson, lessonMotion, perchMotion, surfaceHeight, TRAINING_STATES } from './training.js';
@@ -161,6 +162,8 @@ export class Simulation {
     const aheadX = this.x + Math.sin(this.heading) * 1.2, aheadZ = this.z + Math.cos(this.heading) * 1.2;
     this.caution = Math.max(this.memoryRisk(this.x, this.z), this.memoryRisk(aheadX, aheadZ)) * (1 - lure * 0.95);
     const external = [foodScore * (0.35 + this.hunger), avoidScore + this.caution * 0.45 + this.startle * 0.4 + this.distress * 0.7, this.energy * 0.23 + this.distress * 0.65, this.state === 'Feeding' ? 0.9 : 0.02];
+    external[1] += this.life.social.onClock ? this.life.stress * .25 : 0;
+    external[3] += this.life.social.socialReward;
     const recurrent = new Float32Array(NEURAL_UNITS);
     for (const e of this.edges) recurrent[e.to] += this.activity[e.from] * e.weight;
     const groups = [0, 0, 0, 0];
@@ -176,7 +179,9 @@ export class Simulation {
     const committed = this.target?.id === food?.id && ['Seeking food', 'Feeding'].includes(previous);
     this.target = null;
     const danger = avoidScore > (previous === 'Avoiding' ? 0.3 : 0.48);
-    if (this.life.deskFocus && this.life.route.length && (motion = lifeMotion(this, dt))) {
+    if (this.life.doorway === 'enter' && (motion = lifeMotion(this, dt))) {
+      this.state = motion.state; dx = motion.dx; dz = motion.dz; velocity = motion.velocity; desiredY = motion.y;
+    } else if (this.life.deskFocus && this.life.route.length && (motion = lifeMotion(this, dt))) {
       this.state = motion.state; dx = motion.dx; dz = motion.dz; velocity = motion.velocity; desiredY = motion.y;
     } else if (this.life.deskFocus && this.environment === 'computer' && !this.life.route.length) {
       dx = -this.x; dz = -8.8 - this.z;
@@ -237,17 +242,22 @@ export class Simulation {
       }
     }
     if (velocity > 0) {
+      const doorway = this.state === 'Crossing doorway';
+      const navigatingRoof = this.environment === 'rooftop' && !doorway;
+      if (navigatingRoof) { const point = roofWaypoint(this.x, this.z, dx ?? 0, dz ?? 0); dx=point[0]-this.x; dz=point[1]-this.z; velocity=Math.min(velocity,Math.hypot(dx,dz)/dt); }
+      if (doorway) velocity=Math.min(velocity,Math.hypot(dx ?? 0,dz ?? 0)/dt);
       const length = Math.hypot(dx ?? 0, dz ?? 1) || 1; dx = (dx ?? 0) / length; dz = (dz ?? 1) / length;
-      if (!this.life.deskFocus && !['Panicking', 'Avoiding', ...LIFE_STATES].includes(this.state)) for (const m of this.roomMemories()) {
+      if (!navigatingRoof && !doorway && !this.life.deskFocus && !['Panicking', 'Avoiding', ...LIFE_STATES].includes(this.state)) for (const m of this.roomMemories()) {
         const mx = this.x - m.x, mz = this.z - m.z, distance = Math.hypot(mx, mz);
         const force = m.strength * Math.exp(-distance * distance / 16) * 3.2 * (1 - lure * 0.95);
         dx += (distance > 0.01 ? mx / distance : 1) * force; dz += (distance > 0.01 ? mz / distance : 0) * force;
       }
       const edgeDistance = Math.hypot(this.x, this.z);
-      if (this.state !== 'Panicking' && edgeDistance > WORLD.flyRadius - 1.5) { const push = (edgeDistance - WORLD.flyRadius + 1.5) * 2; dx -= this.x / edgeDistance * push; dz -= this.z / edgeDistance * push; }
+      if (!navigatingRoof && !doorway && this.state !== 'Panicking' && edgeDistance > WORLD.flyRadius - 1.5) { const push = (edgeDistance - WORLD.flyRadius + 1.5) * 2; dx -= this.x / edgeDistance * push; dz -= this.z / edgeDistance * push; }
       const angle = Math.atan2(dx, dz), diff = Math.atan2(Math.sin(angle - this.heading), Math.cos(angle - this.heading));
       this.heading += diff * (this.state === 'Panicking' ? 1 : Math.min(1, dt * 2.8));
-      const next = withinHabitat(this.x + Math.sin(this.heading) * velocity * dt, this.z + Math.cos(this.heading) * velocity * dt, WORLD.flyRadius);
+      const travelHeading = navigatingRoof || doorway ? angle : this.heading;
+      const next = withinHabitat(this.x + Math.sin(travelHeading) * velocity * dt, this.z + Math.cos(travelHeading) * velocity * dt, WORLD.flyRadius);
       this.x = next.x; this.z = next.z;
       this.energy = Math.max(0, this.energy - dt * 0.0018);
     }

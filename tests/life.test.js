@@ -84,3 +84,35 @@ test('Desk focus travels from every room, holds the desk, saves, and releases wi
     sim.reset(); assert.equal(sim.life.deskFocus, false);
   }
 });
+
+
+test('Rooftop arrivals clear the door before going around the stairwell, and departures reverse that path', () => {
+  const sim = new Simulation(); sim.environment='bar'; sim.x=7; sim.z=4; sim.life.autonomous=false;
+  invite(sim,'rooftop'); let entered=false,cleared=false,reached=false;
+  for(let i=0;i<60*45;i++) {
+    sim.tick(1/60);
+    if(sim.environment!=='rooftop')continue;
+    entered=true;
+    if(sim.life.doorway==='enter') { assert.ok(Math.abs(sim.x+6)<.02); assert.ok(sim.z>=4); }
+    else { cleared=true; assert.ok(!(sim.x>-8.6 && sim.x<-3.4 && sim.z>-.8 && sim.z<4.6),'must stay outside padded stairwell'); }
+    if(cleared) {sim.life.action='Watching the city';sim.life.actionUntil=1000;}
+    if(Math.hypot(sim.x,sim.z+7)<.5){reached=true;break;}
+  }
+  assert.ok(entered&&cleared&&reached);
+  invite(sim,'bar'); let aligned=false;
+  for(let i=0;i<60*30&&sim.environment==='rooftop';i++) {
+    sim.tick(1/60);
+    if(sim.life.doorway==='leave'){aligned=true;assert.ok(Math.abs(sim.x+6)<.5);assert.ok(sim.z>3.8);}
+    else if(sim.environment==='rooftop') assert.ok(!(sim.x>-8.6&&sim.x<-3.4&&sim.z>-.8&&sim.z<4.6));
+  }
+  assert.ok(aligned);assert.equal(sim.environment,'bar');
+});
+
+test('Reloading at the rooftop threshold preserves the entrance path and legacy saves migrate',()=>{
+ const sim=new Simulation();sim.environment='rooftop';sim.x=-6;sim.z=4;sim.life.doorway='enter';sim.life.autonomous=false;
+ const restored=decodeSession(encodeSession(sim)).sim;advance(sim,5);advance(restored,5);
+ assert.equal(sim.x,restored.x);assert.equal(sim.z,restored.z);assert.deepEqual(sim.life,restored.life);
+ const legacy=JSON.parse(encodeSession(sim));delete legacy.world.life.doorway;
+ assert.equal(decodeSession(JSON.stringify(legacy)).sim.life.doorway,null);
+ legacy.world.life.doorway='through-wall';assert.equal(decodeSession(JSON.stringify(legacy)),null);
+});

@@ -84,7 +84,7 @@ export function createFly() {
 const legAxis = vec(0, 1, 0);
 export function animateFly(fly, sim) {
   const grounded = Math.max(0, Math.min(1, (1.12 - (sim.y - (sim.groundHeight?.() ?? 0))) / 0.25));
-  const typing = sim.state === 'Locked in';
+  const typing = ['Locked in', 'Working'].includes(sim.state);
   const feeding = sim.state === 'Feeding', grooming = ['Grooming', 'Making the bed'].includes(sim.state), holding = ['Smoking', 'Having a drink'].includes(sim.state);
   const active = grounded * (feeding || grooming || holding || typing ? 1 : 0), t = sim.time;
   fly.group.rotation.z = sim.speed ? Math.sin(t * 1.5) * .025 : 0;
@@ -96,7 +96,7 @@ export function animateFly(fly, sim) {
   if (sim.state === 'Sleeping') { fly.group.rotation.x = -.13; fly.group.rotation.z = .32; }
   else if (sim.life) { fly.group.rotation.z += sim.life.buzz * Math.sin(t * 1.7) * .18; if (!sim.speed) fly.group.rotation.x += (1 - sim.life.motivation) * .12; }
   if (fly.lifeProps) animateLifeProps(fly, sim);
-  fly.wings.forEach((w, i) => { w.rotation.y = sim.state === 'Sleeping' ? (i ? 1 : -1) * .25 : 0; w.rotation.z = (i ? 1 : -1) * (sim.speed ? 0.12 + Math.sin(t * 63) * 0.35 : 0.04); });
+  fly.wings.forEach((w, i) => { w.scale.x = sim.state === 'Crossing doorway' || sim.environment === 'rooftop' && sim.x < -2 && sim.z < 6.7 ? .4 : 1; w.rotation.y = sim.state === 'Sleeping' ? (i ? 1 : -1) * .25 : 0; w.rotation.z = (i ? 1 : -1) * (sim.speed ? 0.12 + Math.sin(t * 63) * 0.35 : 0.04); });
   fly.legs.forEach((leg, i) => { leg.rotation.x = sim.state === 'Sleeping' ? -.6 : sim.speed ? 0.3 + Math.sin(t * 7 + i) * 0.15 : 0; });
   for (const leg of fly.forelegs) {
     const side = leg.side, rub = Math.sin(t * (feeding ? 11 : 8) + (side > 0 ? Math.PI : 0));

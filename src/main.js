@@ -1,3 +1,4 @@
+import { callBuzz, workPerk, shiftClock, SHIFT_SECONDS } from './social-life.js';
 import { ROOMS, invite, setDeskFocus } from './life.js';
 import './style.css';
 import { setupMembership } from './membership.js';
@@ -48,7 +49,7 @@ document.querySelector('#app').innerHTML = `
           <div class="scene-title"><span class="eyebrow">SMALL WINGS. BIG WORLD.</span><h2>Make yourself<br>at home, little guy.</h2></div>
           <div class="environment-controls" role="group" aria-label="Choose environment">${Object.entries(ROOMS).map(([id, r], i) => `<button data-environment="${id}" aria-pressed="false">0${i + 1} <span>${r.name}</span><i aria-hidden="true"></i></button>`).join('')}</div>
           <div class="life-location"><div><span class="life-kicker">FLYGUY IS IN</span><strong id="actual-room">Habitat</strong><span id="life-activity">Exploring</span></div><div class="life-location-actions"><button id="find-fly">Find FlyGuy</button><button id="invite-fly">Invite here</button><button id="autonomy-btn" aria-pressed="true" title="Allow FlyGuy to choose his own rooms and routines">Free will: on</button><button id="adderall-btn" aria-pressed="false" hidden title="Send FlyGuy to the desk and work through markets">Adderall: off</button></div></div>
-          <div class="room-caption"><span id="room-kicker">01 / HABITAT</span><h2 id="room-title">A room of his own.</h2><p id="room-presence">A little life, unfolding.</p></div>
+          <div class="room-caption"><span id="room-kicker">01 / HABITAT</span><h2 id="room-title">A room of his own.</h2><p id="room-presence">A little life, unfolding.</p><p id="shift-countdown" hidden title="Time in his world. Pausing and speed controls also affect this countdown."></p></div>
           ${playgroundControls}
           <div class="desk-controls" id="desk-controls" hidden><button id="watch-screen-btn" aria-pressed="true">Watch screen</button><button id="terminal-btn">Open terminal ${icon('expand')}</button></div>
           <div class="desk-caption" id="desk-caption" hidden><span>NIGHT DESK / MARKET OBSERVATORY</span><p>A little fly. A very big screen.</p><small>Watching is a simulated activity. Market data is separate.</small></div>
@@ -62,8 +63,8 @@ document.querySelector('#app').innerHTML = `
           <div id="render-error" class="render-error" hidden></div>
           <div class="memory-hud" id="memory-hud"><i></i><span id="memory-hud-text">Learning as he goes</span></div>
           <div class="inventory" id="inventory" role="group" aria-label="Habitat inventory">
-            <div class="inventory-heading"><span>POCKET WORLD / INVENTORY</span><span>1–4 to select · Esc to cancel</span></div>
-            <div class="inventory-slots">${Object.entries(STIMULI).map(([kind, o], i) => `<button class="inventory-slot" data-stimulus="${kind}" aria-label="Inventory: ${o.name.toLowerCase()}" aria-pressed="false" title="${o.name} (${i + 1})"><kbd>${i + 1}</kbd><div class="food-art">${foodArt(kind)}</div><span>${o.name}</span></button>`).join('')}<button class="inventory-slot" data-tool="swatter" aria-label="Inventory: fly swatter" aria-pressed="false" title="Fly Swatter (4)"><kbd>4</kbd><div class="food-art">${swatterArt}</div><span>Fly Swatter</span></button>${[5, 6].map(i => `<div class="inventory-slot empty" aria-label="Empty inventory slot ${i}"><kbd>${i}</kbd><span>—</span></div>`).join('')}</div>
+            <div class="inventory-heading"><span>POCKET WORLD / INVENTORY</span><span>1-6 to select · Esc to cancel</span></div>
+            <div class="inventory-slots">${Object.entries(STIMULI).map(([kind, o], i) => `<button class="inventory-slot" data-stimulus="${kind}" aria-label="Inventory: ${o.name.toLowerCase()}" aria-pressed="false" title="${o.name} (${i + 1})"><kbd>${i + 1}</kbd><div class="food-art">${foodArt(kind)}</div><span>${o.name}</span></button>`).join('')}<button class="inventory-slot" data-tool="swatter" aria-label="Inventory: fly swatter" aria-pressed="false" title="Fly Swatter (4)"><kbd>4</kbd><div class="food-art">${swatterArt}</div><span>Fly Swatter</span></button><button class="inventory-slot" id="buzz-phone" aria-label="Call The Buzz"><kbd>5</kbd><div class="food-art">&#128241;</div><span>The Buzz</span></button><button class="inventory-slot" id="work-smoke" aria-label="Give a work cigarette break"><kbd>6</kbd><div class="food-art">&#128684;</div><span>Work break</span></button></div>
           </div>
         </section>
         <div class="playback"><div class="playback-left"><button class="play-button" id="pause-btn" aria-label="Pause virtual world">${icon('pause')}</button><span id="playback-status">Virtual World Running</span><span class="playback-divider"></span><div class="speed-control" aria-label="Simulation speed"><button data-speed="0.5">½×</button><button data-speed="1" class="active">1×</button><button data-speed="2">2×</button></div></div><div class="playback-actions"><button class="quiet-btn" id="director-btn" aria-pressed="false">${icon('clapper')} Directors mode</button><button class="quiet-btn reset-world" id="reset-btn">${icon('reset')} Reset world</button></div></div>
@@ -126,6 +127,18 @@ function removeObject(id) {
 function place(x, z) { if (!placing) return; if(!allowed(placing==='peppermint'?'interact':'food',viewRoom)){cancelPlacement();return toast('Visitors can leave fruit in the Habitat. Choose that room first.');} const o = sim.add(placing, x, z, viewRoom); if (o) { toast(`${STIMULI[placing].name} added. Let’s see what happens.`); cancelPlacement(); renderObjects(); saveWorld(); } else { toast('Eight objects is plenty for this little world. Remove one first.'); cancelPlacement(); } }
 try { habitat = new Habitat($('#viewport'), place, selectObject, (x, z) => { if (x === null) sim.putAwaySwatter(); else if (allowed('interact') && viewRoom === sim.environment) sim.aimSwatter(x, z); }, index => { if(!allowed('interact'))return; sim.training.selected = index; selectObject(null); saveWorld(); }, ()=>authorize('interact')); brain = new BrainView($('#brain-view')); } catch (error) { console.error(error); $('#render-error').hidden = false; $('#render-error').textContent = 'The 3D view needs WebGL. Enable hardware acceleration in your browser, then reload HiFlyGuy.'; }
 setupTrainingUI(sim, saveWorld, toast, cancelPlacement, ()=>authorize('interact'));
+$('#vitals-note').insertAdjacentHTML('afterend', '<div class="work-life-panel"><strong>HIS EVERYDAY LIFE</strong><p id="work-ledger"></p><p id="buzz-status"></p><div class="life-location-actions"><button id="call-buzz">Call The Buzz</button><button id="paid-early">Paid day off</button><button id="overtime">Extra hours</button></div><small>Fictional dollars. An 8-hour shift takes 2 simulation minutes. Visits last 5-17 simulation minutes.</small></div>');
+const socialAction = kind => {
+  if (director?.busy || !authorize('interact')) return;
+  if (paused) { toast('Resume his world first.'); return; }
+  const ok = kind === 'buzz' ? callBuzz(sim) : workPerk(sim,kind);
+  toast(ok ? kind === 'buzz' ? 'The Buzz is on the way. FlyGuy chooses where the night goes.' : 'A change to his workday.' : kind === 'buzz' ? (sim.life.social.onClock || sim.environment === 'store' || sim.life.route.includes('store') ? 'Work time is his own. Call The Buzz after he leaves 7-11.' : 'The Buzz is already visiting or taking a little time between visits.') : 'This perk is available while he is clocked in at 7-11.');
+  saveWorld(); updateUI();
+};
+$('#buzz-phone').onclick = $('#call-buzz').onclick = () => socialAction('buzz');
+$('#work-smoke').onclick = () => socialAction('smoke');
+$('#paid-early').onclick = () => socialAction('early');
+$('#overtime').onclick = () => socialAction('overtime');
 $('#vitals-note').insertAdjacentHTML('beforebegin', '<div class="vital"><span>Mood</span><div class="meter mood"><div id="mood-meter"></div></div><strong id="mood-value">Content</strong></div><p id="life-details" class="life-details"></p><p id="life-habits" class="life-details"></p>');
 
 function refreshEnvironment() {
@@ -236,6 +249,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { cancelPlacement(); selectObject(null); }
   if ($('#dialog').open || $('#terminal-dialog').open || editing || e.repeat) return;
   if (['1', '2', '3', '4'].includes(e.key)) { e.preventDefault(); if (e.key === '4') equipSwatter(); else selectStimulus(Object.keys(STIMULI)[+e.key - 1]); }
+  if (e.key === '5' || e.key === '6') { e.preventDefault(); socialAction(e.key === '5' ? 'buzz' : 'smoke'); }
   if (e.key === 'Delete' && selectedId !== null) { e.preventDefault(); removeObject(selectedId); }
   if (e.code === 'Space' && !['BUTTON', 'A'].includes(document.activeElement.tagName)) { e.preventDefault(); if(authorize('interact'))setPaused(!paused); }
 });
@@ -251,13 +265,32 @@ function chart() {
 function updateUI() {
   updateTrainingUI(sim, !allowed('interact') || paused || sim.environment !== 'playground');
   const present = sim.environment === viewRoom, l = sim.life;
-  if (lastResidence !== sim.environment) { cancelPlacement(); lastResidence = sim.environment; saveWorld(); }
+  if (lastResidence !== sim.environment) { cancelPlacement(); lastResidence = sim.environment; if (habitat?.follow) { viewRoom = sim.environment; refreshEnvironment(); habitat.frame(true); $('#focus-btn').classList.add('active'); $('#focus-btn').setAttribute('aria-pressed', 'true'); } saveWorld(); }
   $('#actual-room').textContent = ROOMS[sim.environment].name;
+  const social = l.social;
+  const shiftCountdown = $('#shift-countdown');
+  shiftCountdown.hidden = viewRoom !== 'store';
+  if (viewRoom === 'store') {
+    const remaining = Math.max(0, Math.ceil(social.nextShift - sim.time));
+    const workRemaining = Math.max(0, Math.ceil(SHIFT_SECONDS + (social.overtime ? 30 : 0) - social.worked));
+    const workCountdown = Math.floor(workRemaining / 60) + ':' + String(workRemaining % 60).padStart(2, '0');
+    shiftCountdown.textContent = social.onClock
+      ? 'Shift ends in ' + workCountdown + ' / ' + shiftClock(social) + (paused ? ' / Paused' : sim.time < social.breakUntil ? ' / On break' : '')
+      : remaining > 0
+        ? 'Next shift in ' + Math.floor(remaining / 60) + ':' + String(remaining % 60).padStart(2, '0') + (paused ? ' / Paused' : '')
+        : !l.autonomous ? 'Shift due / Free will is off'
+          : l.destination === 'store' ? 'Shift due / On his way'
+            : sim.environment === 'store' ? 'Clocking in soon'
+              : 'Shift due / Finishing his routine';
+  }
+  $('#work-ledger').textContent = (social.onClock ? 'ON THE CLOCK / ' + shiftClock(social) : 'OFF THE CLOCK') + ' / $' + social.cash.toFixed(2) + ' / ' + social.groceries + ' groceries / Bills due $' + social.bills.toFixed(0);
+  $('#buzz-status').textContent = social.visitors ? 'The Buzz / ' + social.visitors + ' of ' + social.circleSize + ' visiting / ' + Math.ceil(Math.max(0,social.leaveAt-sim.time)/60) + ' min left' : 'The Buzz / ' + social.circleSize + (social.circleSize === 1 ? ' friend in his circle' : ' friends in his circle');
+  for (const id of ['#paid-early','#overtime','#work-smoke']) $(id).disabled = !social.onClock || sim.environment !== 'store' || id === '#overtime' && social.overtime;
   $('#life-activity').textContent = sim.life.destination ? 'To ' + ROOMS[sim.life.destination].name : sim.state;
   $('#find-fly').hidden = present; $('#invite-fly').textContent = present ? 'Stay with me' : 'Invite here';
   $('#adderall-btn').setAttribute('aria-pressed', String(l.deskFocus)); $('#adderall-btn').textContent = l.deskFocus ? 'Adderall: on' : 'Adderall: off';
   $('#autonomy-btn').setAttribute('aria-pressed', String(l.autonomous)); $('#autonomy-btn').textContent = l.autonomous ? 'Free will: on' : 'Free will: off';
-  $('#room-presence').textContent = present ? (viewRoom === 'habitat' ? (l.tidiness > .7 ? 'Sheets smoothed. A little place to come home to.' : l.tidiness > .4 ? 'A lived-in room. The sheets can wait.' : 'Rumpled sheets. He has had a long day.') : sim.state + '. A moment in his own little world.') : 'An empty room. He is at the ' + ROOMS[sim.environment].name + '.';
+  $('#room-presence').textContent = present ? (viewRoom === 'habitat' ? (l.tidiness > .7 ? 'Sheets smoothed. A little place to come home to.' : l.tidiness > .4 ? 'A lived-in room. The sheets can wait.' : 'Rumpled sheets. He has had a long day.') : sim.state + '. A moment in his own little world.') : 'FlyGuy is at the ' + ROOMS[sim.environment].name + '.';
   document.querySelectorAll('button[data-environment]').forEach(b => { b.classList.toggle('fly-resident', b.dataset.environment === sim.environment); });
   $('#mood-value').textContent = l.mood > .65 ? 'Content' : l.mood > .4 ? 'Quiet' : 'Low spirits';
   $('#mood-meter').style.width = Math.round(l.mood * 100) + '%';
@@ -303,7 +336,7 @@ function applyMembership(state){
     if(paused)setPaused(false);
   }
   previousAccess=paid;
-  const locked='[data-tool="swatter"],[data-stimulus="peppermint"],#training-toggle,#invite-fly,#autonomy-btn,#adderall-btn,#watch-screen-btn,#terminal-btn,#pause-btn,[data-speed],#reset-btn,#clear-btn';
+  const locked='#call-buzz,#buzz-phone,#work-smoke,#paid-early,#overtime,[data-tool="swatter"],[data-stimulus="peppermint"],#training-toggle,#invite-fly,#autonomy-btn,#adderall-btn,#watch-screen-btn,#terminal-btn,#pause-btn,[data-speed],#reset-btn,#clear-btn';
   document.querySelectorAll(locked).forEach(button=>{button.classList.toggle('access-locked',!paid);button.setAttribute('aria-description',paid?'':'Membership required');});
   $('#director-btn').hidden=!allowed('director');if(!allowed('director'))$('#director-actions-btn').hidden=true;
 }

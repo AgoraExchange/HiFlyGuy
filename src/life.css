@@ -2,7 +2,7 @@
 .viewport:fullscreen{height:100dvh}
 .viewport .scene-title,.viewport .desk-caption{display:none}
 .viewport .scene-top{z-index:2}
-.viewport .environment-controls{right:65px;left:23px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:2px;background:#101a24eb;border-color:#354855}
+.viewport .environment-controls{right:65px;left:23px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;background:#101a24eb;border-color:#354855}
 .viewport .environment-controls button{position:relative;justify-content:center;padding:9px 4px;font-size:8px;gap:5px}
 .viewport .environment-controls button span{font-size:10px;white-space:nowrap}
 .environment-controls button i{position:absolute;bottom:3px;width:3px;height:3px;border-radius:50%;background:transparent}
@@ -32,7 +32,7 @@
 @media(max-width:1100px){.life-location{align-items:flex-start}.life-location>div:first-child{flex-wrap:wrap;gap:5px 8px}.life-kicker{width:100%}.viewport .environment-controls button{font-size:0;gap:0}.viewport .environment-controls button span{font-size:9px}}
 @media(max-width:620px){
  .viewport,.viewport[data-environment=playground]{height:660px}
- .viewport .environment-controls{left:15px;right:49px;top:46px;grid-template-columns:repeat(3,minmax(0,1fr));padding:4px}
+ .viewport .environment-controls{left:15px;right:49px;top:46px;grid-template-columns:repeat(4,minmax(0,1fr));padding:4px}
  .viewport .environment-controls button{padding:7px 3px}.viewport .environment-controls button span{font-size:10px}
  .life-location{left:16px;right:49px;top:124px;flex-direction:column;gap:9px}
  .life-location>div:first-child{gap:7px}.life-kicker{width:auto;font-size:6px}.life-location strong{font-size:10px}#life-activity{font-size:7px;max-width:110px}
@@ -44,3 +44,8 @@
  .viewport:fullscreen .training-dock{max-height:calc(100dvh - 370px)}
 }
 @media(max-height:550px){.viewport:fullscreen .room-caption{display:none}.viewport:fullscreen .life-kicker,.viewport:fullscreen #life-activity{display:none}.viewport:fullscreen .life-location{top:99px}.viewport:fullscreen #playground-controls,.viewport:fullscreen .desk-controls{top:138px}.viewport:fullscreen .training-dock{top:180px;max-height:calc(100dvh - 195px)}}
+
+.work-life-panel{margin-top:16px;padding:14px;border:1px solid #46544a;border-radius:12px;background:#18221d}.work-life-panel strong{font-size:11px;letter-spacing:.12em;color:#ddeb99}.work-life-panel p{font-size:12px;line-height:1.6}.work-life-panel small{display:block;margin-top:12px;font-size:10px;line-height:1.5;color:#a4b1a7}.work-life-panel .life-location-actions{flex-wrap:wrap}.inventory-slot .food-art{font-size:28px}
+
+.room-caption #shift-countdown{margin-top:10px;font:600 12px/1.5 var(--mono);font-variant-numeric:tabular-nums;color:#ddeb99;background:#101a24e8;border:1px solid #465947;border-radius:6px;padding:7px 10px;width:fit-content;max-width:100%}
+@media(max-height:550px){.viewport[data-environment=store]:fullscreen .room-caption{display:block}.viewport[data-environment=store]:fullscreen .room-caption h2,.viewport[data-environment=store]:fullscreen #room-presence{display:none}}

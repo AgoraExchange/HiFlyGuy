@@ -1,3 +1,8 @@
+import { AmbientLife } from './ambient-life.js';
+import { createFly, animateFly } from './scene.js';
+import { dressTeslaFly } from './director-tesla-cast.js';
+import { shiftClock } from './social-life.js';
+import { ROOMS } from './life.js';
 import * as T from 'three';
 
 const mat = (color, metalness = .15) => new T.MeshStandardMaterial({ color, roughness: .72, metalness });
@@ -52,8 +57,9 @@ function windowFrame(g, x, z) {
   for (let y = 2.2; y < 7.3; y += .46) { const slat = box(g, [5.05, .3, .18], [x, y, z + .35], mat('#263641')); slat.rotation.x = -.4; }
   box(g, [.13, 5.2, .2], [x, 4.6, z + .55], steel); box(g, [5.8, .2, .7], [x, 1.85, z + .35], steel);
 }
-function doorway(g, x, z, text) {
-  box(g, [2.4, 3.9, .18], [x, 1.95, z], mat('#080f18'));
+function doorway(g, x, z, text, recessedInterior = true) {
+  // Recess the dark interior behind the opening, leaving a real threshold.
+  if (recessedInterior) box(g, [2.4, 3.9, .18], [x, 1.95, z - 1.3], mat('#080f18'));
   for (const side of [-1, 1]) box(g, [.09, 4, .2], [x + side * 1.25, 2, z + .1], steel);
   box(g, [2.6, .1, .2], [x, 4, z + .1], steel); label(g, text, x, 4.45, z + .15, 3);
   const ring = new T.Mesh(new T.RingGeometry(.5, .53, 48), new T.MeshBasicMaterial({ color: '#a5c9c0', side: T.DoubleSide, transparent: true, opacity: .4 })); ring.rotation.x = -Math.PI / 2; ring.position.set(x, .02, z + .8); g.add(ring);
@@ -62,25 +68,27 @@ export class LifeScenes {
   constructor(scene) { this.scene = scene; this.rooms = new Map(); this.surfaces = []; }
   setRoom(room) {
     this.room = room;
-    if (['habitat', 'fireescape', 'bar', 'rooftop'].includes(room) && !this.rooms.has(room)) {
+    if (['habitat', 'fireescape', 'bar', 'rooftop', 'store'].includes(room) && !this.rooms.has(room)) {
       const g = new T.Group(); g.userData.surfaces = []; if (['fireescape', 'rooftop'].includes(room)) { const grid = new T.GridHelper(22, 22, '#687c87', '#506372'); grid.position.y = .02; grid.material.transparent = true; grid.material.opacity = .38; g.add(grid); } this.rooms.set(room, g); this.scene.add(g); this[room](g);
     }
     for (const [key, g] of this.rooms) g.visible = key === room;
     this.surfaces = this.rooms.get(room)?.userData.surfaces ?? [];
   }
   habitat(g) {
-    gridWall(g, 0, 4, -9, 20, 8); windowFrame(g, 3.2, -8.7); doorway(g, 7, -4.8, 'OUT INTO THE WORLD');
-    box(g, [4.6, .4, 6.5], [-3.5, .25, -3], wood);
-    const mattress = box(g, [4.2, .4, 6], [-3.5, .65, -3], linen); g.userData.surfaces.push(mattress);
-    box(g, [4.7, 2.2, .25], [-3.5, 1.1, -6.2], mat('#3a4651'));
+    gridWall(g, 0, 4, -9, 20, 8); windowFrame(g, 3.2, -8.7); doorway(g, 7, -4.8, 'OUT INTO THE WORLD', false);
+    this.frontDoor = new T.Group(); this.frontDoor.position.set(5.8, 0, -4.7); g.add(this.frontDoor);
+    box(this.frontDoor, [2.3,3.8,.12], [1.15,1.9,0], wood); box(this.frontDoor,[.12,.12,.18],[2.1,1.8,.16],steel);
+    box(g, [6.6, .4, 6.5], [-3.5, .25, -3], wood);
+    const mattress = box(g, [6.2, .4, 6], [-3.5, .65, -3], linen); g.userData.surfaces.push(mattress);
+    box(g, [6.7, 2.2, .25], [-3.5, 1.1, -6.2], mat('#3a4651'));
     const pillow = new T.Mesh(new T.SphereGeometry(1, 28, 16), linen); pillow.scale.set(1.65, .25, .67); pillow.position.set(-3.5, 1.02, -5.2); g.add(pillow);
-    const blanket = new T.Mesh(new T.PlaneGeometry(4.9, 4.6, 34, 30), mat('#78919f')); blanket.rotation.x = -Math.PI / 2; blanket.position.set(-3.5, .9, -2.1); blanket.receiveShadow = true; blanket.castShadow = true; blanket.material.side = T.DoubleSide; g.add(blanket); this.blanket = blanket; this.blanketBase = blanket.geometry.attributes.position.array.slice();
+    const blanket = new T.Mesh(new T.PlaneGeometry(6.9, 4.6, 34, 30), mat('#78919f')); blanket.rotation.x = -Math.PI / 2; blanket.position.set(-3.5, .9, -2.1); blanket.receiveShadow = true; blanket.castShadow = true; blanket.material.side = T.DoubleSide; g.add(blanket); this.blanket = blanket; this.blanketBase = blanket.geometry.attributes.position.array.slice();
     const clutter = new T.Group(); g.add(clutter); this.clutter = clutter;
     for (let i = 0; i < 7; i++) { const paper = box(clutter, [.5, .03, .7], [-.5 + Math.sin(i * 5) * 1.3, .05, -2 + Math.cos(i * 3) * 3], mat('#9a9f94')); paper.rotation.y = i * .7; }
-    box(g, [1.5, 1, 1.4], [-7, .5, -4], wood); box(g, [.85, .08, .5], [-7, 1.05, -4], mat('#50686c'));
-    rod(g, [-7, 1, -4.2], [-7, 2, -4.2], .035);
-    const shade = new T.Mesh(new T.ConeGeometry(.5, .65, 20, 1, true), mat('#baaa7f')); shade.position.set(-7, 2, -4.2); g.add(shade);
-    const lamp = new T.PointLight('#ffce89', 8, 7, 2); lamp.position.set(-7, 1.8, -4); g.add(lamp);
+    box(g, [1.5, 1, 1.4], [-8.1, .5, -4], wood); box(g, [.85, .08, .5], [-8.1, 1.05, -4], mat('#50686c'));
+    rod(g, [-8.1, 1, -4.2], [-8.1, 2, -4.2], .035);
+    const shade = new T.Mesh(new T.ConeGeometry(.5, .65, 20, 1, true), mat('#baaa7f')); shade.position.set(-8.1, 2, -4.2); g.add(shade);
+    const lamp = new T.PointLight('#ffce89', 8, 7, 2); lamp.position.set(-8.1, 1.8, -4); g.add(lamp);
     // Soft slashes across floor and duvet read as light through the blinds.
     for (let i = 0; i < 11; i++) {
       const streak = new T.Mesh(new T.PlaneGeometry(6.8, .19), new T.MeshBasicMaterial({ color: '#c2e4ef', transparent: true, opacity: .13, depthWrite: false, side: T.DoubleSide })); streak.rotation.set(-Math.PI / 2, 0, -.58); streak.position.set(1.3 - i * .25, .012, -6.6 + i * .65); g.add(streak);
@@ -120,13 +128,100 @@ export class LifeScenes {
       const light = new T.PointLight('#ffbd70', 48, 15, 2); light.position.set(x, 5, -5.8); g.add(light);
       const pool = new T.Mesh(new T.ConeGeometry(2.9, 5, 32, 1, true), new T.MeshBasicMaterial({ color: '#ffbf78', transparent: true, opacity: .018, side: T.DoubleSide, depthWrite: false })); pool.position.set(x, 2.5, -5.8); g.add(pool);
     }
+    for(const x of [-6,-1,4])for(const z of [1,5]) {box(g,[2.2,.12,1.4],[x,1.15,z-.9],wood);rod(g,[x,0,z-.9],[x,1.1,z-.9],.09);box(g,[.2,.3,.2],[x,1.36,z-.9],linen);box(g,[1,.8,1],[x,.4,z],wood);}
     label(g, 'THE SMALL HOURS', -1, 7, -8.85, 9, '#f4c795'); label(g, 'OPEN LATE  /  ANOTHER ROUND?', -1, 6.45, -8.84, 5, '#a28a6e');
+  }
+  store(g) {
+    gridWall(g, 0, 4, -9, 20, 8); doorway(g, 7, 4, '7-11 / ENTRANCE');
+    this.storeOpenSign = label(g, 'OPEN / COME ON IN', 7, 2.5, 4.2, 3, '#bfe5b0');
+    this.storeClosedSign = new T.Group(); this.storeClosedSign.name = 'store-closed-sign'; g.add(this.storeClosedSign);
+    box(this.storeClosedSign, [2.8, 1.1, .12], [7, 2.5, 4.2], mat('#522c2c'));
+    rod(this.storeClosedSign, [6, 3, 4.2], [7, 3.7, 4.2], .025);
+    rod(this.storeClosedSign, [8, 3, 4.2], [7, 3.7, 4.2], .025);
+    const closedText = label(this.storeClosedSign, 'CLOSED', 7, 2.5, 4.28, 5, '#ffe6cb');
+    const ctx = closedText.material.map.image.getContext('2d');
+    ctx.clearRect(0, 0, 768, 128); ctx.fillStyle = '#ffe6cb'; ctx.font = 'bold 64px monospace'; ctx.textAlign = 'center'; ctx.fillText('CLOSED', 384, 84); closedText.material.map.needsUpdate = true;
+    box(g,[12,1.5,1.5],[-1,.75,-4.2],mat('#437464'));
+    box(g,[12.3,.15,1.8],[-1,1.55,-4.2],linen);
+    box(g,[1.1,.7,.7],[1,1.98,-4.2],steel); label(g,'REGISTER',1,2.5,-4.15,2);
+    box(g,[2.5,.85,1.4],[-2,.425,-7.2],wood); this.storeDutySign = label(g,'FLYGUY / ON DUTY',-2,3.5,-8.6,3.5,'#ddeb99');
+    for(const x of [-7,6]) for(const y of [1,2.6,4.2]) {
+      box(g,[2.7,.12,2.5],[x,y,-6.6],linen);
+      for(let i=0;i<5;i++) box(g,[.33,.55,.55],[x-1+i*.5,y+.34,-6.2],mat(['#edac65','#83b692','#d8c795'][i%3]));
+    }
+    for(const [y,color] of [[5.9,'#ed7c43'],[6.3,'#e5ddd0'],[6.7,'#519b7e']])box(g,[19,.25,.12],[0,y,-8.8],mat(color));
+    label(g,'7-11 / THE EVERYDAY SHIFT',0,7.4,-8.7,12,'#f2e5ce');
+    this.clockFace = label(g,'9:00 AM',0,4.7,-8.7,5);
+    this.clockCanvas=this.clockFace.material.map.image;
+    const light=new T.PointLight('#e8f5de',70,24,2);light.position.set(0,6,0);g.add(light);
+    for(const x of [-5,5])box(g,[3,.08,.7],[x,7,-1],new T.MeshBasicMaterial({color:'#e4f1e9'}));
+  }
+  updateCompany(sim) {
+    if (!this.company) {
+      this.company = Array.from({length:11},(_,i)=>{
+        const fly=createFly(); if(i<5)dressTeslaFly(fly,new Set(),true,i%2);
+        fly.group.scale.setScalar(i<5?.66:.6);this.scene.add(fly.group);return fly;
+      });
+    }
+    const s=sim.life.social;
+    const storeOpen = s.onClock && sim.environment === 'store';
+    if (this.storeClosedSign) {
+      this.storeClosedSign.visible = !storeOpen; this.storeOpenSign.visible = storeOpen; this.storeDutySign.visible = storeOpen;
+    }
+    if(this.frontDoor)this.frontDoor.rotation.y=(s.visitors && sim.time-s.arrivedAt<9 || sim.environment === 'habitat' && (sim.life.route.length || sim.life.doorway))?-1.25:0;
+    if(this.room==='store' && this.clockFace){
+      const text=storeOpen?shiftClock(s):'OFF SHIFT';
+      if(this.clockText!==text){this.clockText=text;const c=this.clockCanvas.getContext('2d');c.clearRect(0,0,768,128);c.fillStyle='#e4efbb';c.font='bold 60px monospace';c.textAlign='center';c.fillText(text,384,85);this.clockFace.material.map.needsUpdate=true;}
+    }
+    this.crowds ??= new Map();
+    let ambient=[];
+    if(['bar','store'].includes(this.room)) {
+      if(!this.crowds.has(this.room))this.crowds.set(this.room,new AmbientLife(this.room));
+      const obstacles=sim.environment===this.room?[{x:sim.x,z:sim.z,radius:1.65}]:[];
+      // Friends and the star get priority; ambient patrons steer around them.
+      if(sim.environment===this.room&&this.room==='bar')for(let i=0;i<s.visitors;i++) {
+        const friend=this.company[i].group;
+        if(friend.visible)obstacles.push({x:friend.position.x,z:friend.position.z,radius:.95});
+      }
+      ambient=this.crowds.get(this.room).update(sim.time,{open:this.room==='bar'||storeOpen,obstacles});
+    }
+    this.company.forEach((fly,i)=>{
+      const friend=i<5, present=sim.environment===this.room;
+      fly.group.visible=(this.room !== 'store' || storeOpen) && (friend?this.room!=='store'&&i<s.visitors&&present:['bar','store'].includes(this.room));
+      if(!fly.group.visible)return;
+      let x,z,y=.64,state='Exploring',speed=0,heading=friend?sim.heading:Math.PI;
+      if(friend){
+        const sleeping=sim.state==='Sleeping'&&this.room==='habitat';
+        const angle=i/5*Math.PI*2;
+        x=sleeping?-5.8+(i%3)*2.1:Math.max(-8,Math.min(8,sim.x+Math.cos(angle)*2.3));
+        z=sleeping?-4.8+Math.floor(i/3)*3.3:Math.max(-8,Math.min(8,sim.z+Math.sin(angle)*2.3));
+        y=sleeping?1.5:.85;state=sleeping?'Sleeping':sim.state==='Having a drink'?'Having a drink':'Exploring';
+        const arrival=Math.max(0,Math.min(1,(sim.time-s.arrivedAt-i*.5)/8));
+        const exit=ROOMS[this.room].exit;x=exit[0]+(x-exit[0])*arrival;z=exit[1]+(z-exit[1])*arrival;speed=arrival<1?1:sim.speed;
+        const workGoodbye=sim.life.route.includes('store')&&sim.life.crossingUntil ? Math.max(0,Math.min(1,1-(sim.life.crossingUntil-sim.time)/1.4)) : 0;
+        const departure=Math.max(workGoodbye,Math.max(0,Math.min(1,(sim.time-(s.leaveAt-8))/8)));x+=(exit[0]-x)*departure;z+=(exit[1]-z)*departure;if(departure>0)speed=1;
+      }else{
+        const agent=ambient[i-5];fly.group.visible=agent.visible;
+        if(!agent.visible)return;
+        ({x,y,z,state,speed,heading}=agent);
+        fly.group.userData.routine=agent.goal;
+        fly.group.userData.yielding=agent.yielding;
+      }
+      fly.group.position.set(x,y,z);fly.group.rotation.y=heading;
+      animateFly(fly,{time:sim.time+i,y,speed,state,life:friend?sim.life:{buzz:state==='Having a drink'?.12:0,motivation:.8},groundHeight:()=>y-.87});
+    });
   }
   rooftop(g) {
     box(g, [23, .3, 23], [0, -.2, 0], dark);
     for (const x of [-11.4, 11.4]) { const wall = box(g, [.35, 1.7, 23], [x, .85, 0], steel); outline(g, wall); }
     const parapet = box(g, [23, 1.7, .35], [0, .85, -9.5], steel); outline(g, parapet);
-    const roofHouse = box(g, [4, 4.5, 4], [-6, 2.25, 1.8], dark); outline(g, roofHouse); doorway(g, -6, 4, 'BACK DOWNSTAIRS');
+    // Hollow stairwell with an open front, not a solid block behind the door.
+    for (const x of [-7.9,-4.1]) outline(g, box(g,[.2,4.5,4],[x,2.25,1.8],dark));
+    box(g,[4,4.5,.2],[-6,2.25,-.1],dark);
+    box(g,[4,.2,4],[-6,4.5,1.8],dark);
+    for (const x of [-7.6,-4.4]) box(g,[.8,4.5,.2],[x,2.25,3.8],dark);
+    box(g,[2.4,.5,.2],[-6,4.25,3.8],dark);
+    doorway(g, -6, 4, 'BACK DOWNSTAIRS');
     const tank = new T.Mesh(new T.CylinderGeometry(2, 2, 3.5, 20), mat('#283849', .5)); tank.position.set(7, 5, -5); g.add(tank); outline(g, tank);
     const cap = new T.Mesh(new T.ConeGeometry(2.25, 1.15, 20), steel); cap.position.set(7, 7.3, -5); g.add(cap);
     for (const x of [5.6, 8.4]) for (const z of [-6.4, -3.6]) rod(g, [x, 0, z], [x, 3.3, z], .09);
@@ -136,11 +231,12 @@ export class LifeScenes {
     const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.Float32BufferAttribute(pts, 3)); g.add(new T.Points(geo, new T.PointsMaterial({ color: '#7792ad', size: .07 })));
   }
   update(sim) {
+    this.updateCompany(sim);
     if (this.room === 'habitat' && this.blanket) {
       const tidy = sim.life.tidiness; if (Math.abs(tidy - (this.lastTidiness ?? -1)) < .002) return; this.lastTidiness = tidy; const attr = this.blanket.geometry.attributes.position;
       for (let i = 0; i < attr.count; i++) {
         const x = this.blanketBase[i * 3], y = this.blanketBase[i * 3 + 1];
-        const drape = Math.max(0, Math.abs(x) - 2.1) * 1.5;
+        const drape = Math.max(0, Math.abs(x) - 3.1) * 1.5;
         attr.setZ(i, -drape + (1 - tidy) * (.3 + Math.sin(x * 3 + y * 4) * .16 + Math.sin(y * 6 - x) * .1));
         attr.setY(i, y + (1 - tidy) * Math.sin(x * 2) * .42);
       }
@@ -159,10 +255,13 @@ export function addLifeProps(fly) {
   const drink = new T.Mesh(new T.CylinderGeometry(.16, .13, .24, 20), mat('#a76823')); drink.position.y = -.06; glass.add(drink);
   const smoke = new T.Group(); fly.group.add(smoke);
   for (let i = 0; i < 16; i++) { const puff = new T.Mesh(new T.SphereGeometry(1, 10, 8), new T.MeshBasicMaterial({ color: '#adb9c3', transparent: true, opacity: .12, depthWrite: false })); smoke.add(puff); }
-  fly.lifeProps = { cigarette, glass, smoke, ember };
+  const groceries=new T.Group();fly.group.add(groceries);box(groceries,[.5,.6,.3],[.65,-.3,.5],mat('#bb9568'));rod(groceries,[.48,0,.5],[.48,.16,.5],.025);rod(groceries,[.82,0,.5],[.82,.16,.5],.025);rod(groceries,[.48,.16,.5],[.82,.16,.5],.025);
+  groceries.visible=false;
+  fly.lifeProps = { cigarette, glass, smoke, ember, groceries };
 }
 export function animateLifeProps(fly, sim) {
-  const { cigarette, glass, smoke, ember } = fly.lifeProps;
+  const { cigarette, glass, smoke, ember, groceries } = fly.lifeProps;
+  groceries.visible = sim.state === 'Buying groceries';
   cigarette.visible = smoke.visible = sim.state === 'Smoking'; glass.visible = sim.state === 'Having a drink';
   const lift = (Math.sin(sim.time * 1.1) + 1) / 2;
   cigarette.position.set(.3, -.15 + lift * .22, 1.27); cigarette.rotation.y = -.3;

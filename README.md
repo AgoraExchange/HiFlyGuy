@@ -199,3 +199,15 @@ The red-lit desk leads into a laptop reflection that moves while Fly Guy freezes
 ### Accounts and memberships
 
 The 2.5-second entrance, Firebase accounts, visitor access, Square membership links and manual username grants are documented in [MEMBERSHIPS.md](MEMBERSHIPS.md). Firebase console setup and publication of `firestore.rules` are required before live sign-up.
+
+## Nine to five / The Buzz
+
+7-11 is a seventh observation room. FlyGuy autonomously clocks in when a shift is due and he has energy; an eight-hour shift is 120 simulation seconds at $8 per fictional hour. The wall clock speeds from 9:00 AM to 5:00 PM. Clock-out pays $44 in bills and buys up to three $4 groceries. Food is eaten at home; shift and social progress save with the world. All timers pause with the simulation and do not progress offline.
+
+Members can call The Buzz from phone slot 5 or the everyday-life panel. The first call brings one female fly. Every 1-3 further successful calls adds another friend to his circle, capped at five. One friend always answers and each additional friend has a 65% chance of joining, so turnout varies. They enter through the room doorway, accompany him, and leave after 5-17 simulation minutes. Circle growth and the next call milestone save with the world. Work-bound visits end at the first doorway. The Buzz never enters 7-11 and stays away until called again; calls are unavailable while at work or heading there. Mood, stress, rest and illustrative reward signals react to company. The habitat has a wider bed and opening front door; bar and shop have ambient patrons. Focus mode follows FlyGuy across rooms.
+
+While clocked in, slot 6 grants a 14-second cigarette break; Paid day off pays the remaining shift wages; Extra hours adds two paid work hours with more stress. These controls use existing membership authorization. Guests can watch work and social routines. Each account remains a separate local world, not a shared multiplayer server.
+
+Creator Director Mode > Actions > 9 TO 5 / AFTER HOURS runs a silent 48-second take after a two-second lead-in: wake, clock-in, accelerated shift, phone call, friends at home, neighboring bar stools, home together, and a relaxed arms-around-the-Buzz bedtime pose. Screen-record it and add music in your editor. It uses a separate actor and never changes the saved world.
+
+Background flies use individual shopping, queueing, paying, drinking, grooming and departure routines. Local steering, body separation and doorway yielding keep them apart; FlyGuy and his company get priority. Patrons stay smaller and unlabelled so FlyGuy remains the focus. Ambient activity freezes with simulation time and 7-11 admits nobody while closed. The 7-11 caption shows Next shift in while off duty and Shift ends in while working; overtime extends the remaining work and cigarette breaks pause it.
