@@ -28,6 +28,38 @@ test('first person cannot move through FlyGuy and clears its live presence on ex
   expect(await page.evaluate(() => window.testPresence.sim.observer)).toBeNull();
 });
 
+for (const mobile of [false,true]) test(`direct conversation holds movement and look until finished on ${mobile?'mobile':'desktop'}`,async({page})=>{
+  if(mobile)await page.setViewportSize({width:390,height:844});
+  await enter(page);
+  await page.keyboard.down('KeyD');await page.keyboard.down('Space');
+  await page.evaluate(async()=>{
+    const {FlyDialogue}=await import('/src/dialogue.js'),original=FlyDialogue.prototype.update;
+    FlyDialogue.prototype.update=function(dt,sim,options){
+      if(options.running&&options.canAddress){this.current=null;this.next=0;this.nextViewer=0;this.lastContext=sim.environment;FlyDialogue.prototype.update=original;}
+      return original.call(this,dt,sim,options);
+    };
+  });
+  await page.locator('#pause-btn').click();
+  await expect(page.locator('#viewport')).toHaveClass(/fly-addressing/);
+  const pose=()=>page.evaluate(()=>{const h=window.testPresence.habitat;return [...h.camera.position.toArray(),...h.camera.quaternion.toArray()];});
+  const locked=await pose();
+  await page.keyboard.press('ArrowRight');await page.keyboard.press('ArrowUp');await page.keyboard.press('Escape');
+  const canvas=page.locator('#viewport > canvas'),box=await canvas.boundingBox();
+  await page.mouse.move(box.x+box.width*.5,box.y+box.height*.5);await page.mouse.down();
+  await page.mouse.move(box.x+box.width*.7,box.y+box.height*.4);await page.mouse.up();
+  if(mobile){
+    await page.locator('#movement-joystick').dispatchEvent('pointerdown',{pointerType:'touch',pointerId:10,clientX:80,clientY:500,button:0});
+    await canvas.dispatchEvent('pointermove',{pointerType:'touch',pointerId:11,clientX:240,clientY:350});
+  }
+  await expect(page.locator('#fly-speech.to-viewer')).toBeVisible({timeout:12000});
+  expect(await pose()).toEqual(locked);
+  await expect(page.locator('#viewport')).not.toHaveClass(/fly-addressing/,{timeout:20000});
+  await page.keyboard.up('KeyD');await page.keyboard.up('Space');
+  await expect(page.locator('#viewport')).toHaveAttribute('data-first-person','true');
+  const start=await pose();await page.keyboard.down('KeyA');await page.waitForTimeout(350);await page.keyboard.up('KeyA');
+  const end=await pose();expect(Math.hypot(end[0]-start[0],end[2]-start[2])).toBeGreaterThan(.2);
+});
+
 test('FlyGuy approaches the first-person view, faces the viewer, and leaves their camera unchanged', async ({ page }) => {
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await enter(page, false);

@@ -140,7 +140,10 @@ export class FirstPerson {
   resolvePresence(sim) {
     if (!this.active) return;
     const h = this.habitat, eye = h.camera.position, fly = h.fly.group.position;
-    if (sim.environment === 'playground') {
+    if (h.encounter?.firstPerson) {
+      eye.copy(h.encounter.camera); h.camera.quaternion.copy(h.encounter.quaternion);
+      this.previousFly = fly.clone();
+    } else if (sim.environment === 'playground') {
       eye.copy(separateViewer(this.previousEye ?? eye, eye, this.previousFly ?? fly, fly));
       this.previousFly = fly.clone();
     } else this.previousFly = null;

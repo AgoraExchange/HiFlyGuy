@@ -48,9 +48,19 @@ export function setupDialogue({ getStorage, getHabitat }) {
   }
   bubbles.onchange = () => { if (!bubbles.checked) cancel(); persist(); };
   encounters.onchange = () => { if (!encounters.checked) cancel(); persist(); };
-  skip.onclick = cancel;
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && getHabitat()?.encounter) cancel(); });
-  viewport.addEventListener('pointerdown', e => { if (getHabitat()?.encounter && e.target !== skip) cancel(); }, true);
+  skip.disabled = true; skip.textContent = 'FlyGuy is talking to you…';
+  // An ongoing touch or run must not dismiss the conversation or move the camera.
+  for (const type of ['pointerdown', 'pointermove', 'click', 'dblclick', 'wheel']) {
+    viewport.addEventListener(type, e => {
+      if (!getHabitat()?.encounter) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+    }, { capture: true, passive: false });
+  }
+  document.addEventListener('keydown', e => {
+    if (getHabitat()?.encounter && ['Escape','Space','KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) {
+      e.preventDefault(); e.stopImmediatePropagation();
+    }
+  }, true);
   document.querySelector('#download-dialogue').onclick = () => {
     const text = entries.map(e => `[${new Date(e.at).toLocaleString()} | World ${clock(e.worldTime)} | ${ROOMS[e.room]?.name ?? e.room} | ${e.kind} | ${e.state}]\nFlyGuy: ${e.text}`).join('\n\n');
     const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));

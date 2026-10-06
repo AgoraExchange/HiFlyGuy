@@ -256,8 +256,9 @@ export class Habitat {
     const origin = this.fly.group.position.clone();
     if (this.firstPerson?.active) {
       const destination = this.firstPerson.addressSpot(); if (!destination) return;
-      this.encounter = { firstPerson: true, origin, destination, camera: this.camera.position.clone(), elapsed: 0, duration: duration + 4.5 };
-      this.firstPerson.keys.clear(); return;
+      this.encounter = { firstPerson: true, origin, destination, camera: this.camera.position.clone(), quaternion: this.camera.quaternion.clone(), elapsed: 0, duration: duration + 4.5 };
+      this.firstPerson.keys.clear(); this.firstPerson.releaseStick(); this.firstPerson.pointer=null;
+      this.down=null; return;
     }
     const direction = this.camera.position.clone().sub(origin); direction.y = 0; direction.normalize();
     const destination = origin.clone().addScaledVector(direction, 2.4); destination.y += 2;
@@ -274,7 +275,12 @@ export class Habitat {
   }
   endEncounter() {
     const e = this.encounter; if (!e) return;
-    if (e.firstPerson) { this.fly.group.position.copy(e.origin); this.encounter = null; this.firstPerson.previousFly = null; return; }
+    if (e.firstPerson) {
+      this.fly.group.position.copy(e.origin);this.camera.position.copy(e.camera);this.camera.quaternion.copy(e.quaternion);
+      this.firstPerson.keys.clear();this.firstPerson.releaseStick();this.firstPerson.pointer=null;
+      this.firstPerson.previousEye=this.camera.position.clone();
+      this.encounter = null; this.firstPerson.previousFly = null; return;
+    }
     this.camera.position.copy(e.camera); this.controls.target.copy(e.target);
     this.fly.group.position.copy(e.origin);
     this.controls.enabled = e.enabled; this.controls.enableDamping = e.damping;

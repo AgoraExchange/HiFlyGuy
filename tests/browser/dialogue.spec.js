@@ -42,7 +42,9 @@ test('a camera visit approaches, addresses the viewer and returns to the world',
   await expect(page.locator('#viewport')).not.toHaveClass(/fly-addressing/, { timeout: 20000 });
   await expect(page.locator('#end-encounter')).toBeHidden();
   await cue(page, true); await expect(page.locator('#end-encounter')).toBeVisible();
-  await page.keyboard.press('Escape'); await expect(page.locator('#end-encounter')).toBeHidden();
+  await page.keyboard.press('Escape'); await expect(page.locator('#end-encounter')).toBeVisible();
+  await expect(page.locator('#end-encounter')).toBeDisabled();
+  await expect(page.locator('#end-encounter')).toBeHidden({timeout:20000});
   expect(errors).toEqual([]);
 });
 
@@ -53,5 +55,7 @@ test('mobile dialogue fits the viewport with reduced motion', async ({ page }) =
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const box = await page.locator('#fly-speech').boundingBox(); expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(390);
   await page.screenshot({ path: 'test-results/dialogue-mobile.png', fullPage: true });
-  await page.locator('#end-encounter').click(); await expect(page.locator('#fly-speech')).toBeHidden();
+  await page.locator('#viewport > canvas').dispatchEvent('pointerdown',{pointerType:'touch',pointerId:42,button:0});
+  await expect(page.locator('#fly-speech')).toBeVisible();
+  await expect(page.locator('#end-encounter')).toBeHidden({timeout:20000});
 });
