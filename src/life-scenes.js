@@ -57,9 +57,15 @@ function windowFrame(g, x, z) {
   for (let y = 2.2; y < 7.3; y += .46) { const slat = box(g, [5.05, .3, .18], [x, y, z + .35], mat('#263641')); slat.rotation.x = -.4; }
   box(g, [.13, 5.2, .2], [x, 4.6, z + .55], steel); box(g, [5.8, .2, .7], [x, 1.85, z + .35], steel);
 }
-function doorway(g, x, z, text, recessedInterior = true) {
+function doorway(g, x, z, text, recessedInterior = true, depth = 1.3) {
   // Recess the dark interior behind the opening, leaving a real threshold.
-  if (recessedInterior) box(g, [2.4, 3.9, .18], [x, 1.95, z - 1.3], mat('#080f18'));
+  if (recessedInterior) {
+    const panel = box(g, [2.4, 3.9, .18], [x, 1.95, z - depth], mat('#080f18')); panel.name = 'door-panel';
+    // Solid reveals connect the frame to its inset panel on all three sides.
+    for(const side of [-1,1]) { const jamb=box(g,[.14,4,depth+.2],[x+side*1.25,2,z-depth/2+.05],steel);jamb.name='door-jamb'; }
+    box(g,[2.64,.14,depth+.2],[x,4,z-depth/2+.05],steel);
+    box(g,[2.64,.08,depth+.38],[x,.04,z-depth/2+.05],steel);
+  }
   for (const side of [-1, 1]) box(g, [.09, 4, .2], [x + side * 1.25, 2, z + .1], steel);
   box(g, [2.6, .1, .2], [x, 4, z + .1], steel); label(g, text, x, 4.45, z + .15, 3);
   const ring = new T.Mesh(new T.RingGeometry(.5, .53, 48), new T.MeshBasicMaterial({ color: '#a5c9c0', side: T.DoubleSide, transparent: true, opacity: .4 })); ring.rotation.x = -Math.PI / 2; ring.position.set(x, .02, z + .8); g.add(ring);
@@ -109,7 +115,7 @@ export class LifeScenes {
     const light = new T.PointLight('#f5c88c', 18, 13, 2); light.position.set(0, 4, -6); g.add(light);
   }
   bar(g) {
-    gridWall(g, 0, 4.5, -9, 25, 9); doorway(g, 7, 3.2, 'STAIRS / ROOFTOP');
+    gridWall(g, 0, 4.5, -9, 25, 9); doorway(g, 7, 3.2, 'STAIRS / ROOFTOP', true, .18);
     box(g, [15, 2.2, 2.5], [-1, 1.1, -6.4], wood); box(g, [15.7, .22, 3], [-1, 2.3, -6.4], mat('#5a4234'));
     rod(g, [-8, .45, -4.6], [6, .45, -4.6], .07, mat('#9f8258', .7));
     for (const x of [-4, 0, 4]) {
@@ -132,7 +138,7 @@ export class LifeScenes {
     label(g, 'THE SMALL HOURS', -1, 7, -8.85, 9, '#f4c795'); label(g, 'OPEN LATE  /  ANOTHER ROUND?', -1, 6.45, -8.84, 5, '#a28a6e');
   }
   store(g) {
-    gridWall(g, 0, 4, -9, 20, 8); doorway(g, 7, 4, '7-11 / ENTRANCE');
+    gridWall(g, 0, 4, -9, 20, 8); doorway(g, 7, 4, '7-11 / ENTRANCE', true, .18);
     this.storeOpenSign = label(g, 'OPEN / COME ON IN', 7, 2.5, 4.2, 3, '#bfe5b0');
     this.storeClosedSign = new T.Group(); this.storeClosedSign.name = 'store-closed-sign'; g.add(this.storeClosedSign);
     box(this.storeClosedSign, [2.8, 1.1, .12], [7, 2.5, 4.2], mat('#522c2c'));

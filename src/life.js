@@ -84,7 +84,7 @@ export function lifeMotion(sim, dt) {
       if (l.route.includes('store')) dismissBuzz(sim, 'Goodbyes at the door. The Buzz heads home; FlyGuy heads to work.');
       sim.environment = l.route.shift(); const next = ROOMS[sim.environment];
       [sim.x, sim.z] = next.exit; sim.y = 1.8; sim.heading = sim.environment === 'playground' ? Math.PI : 0; l.doorway = 'enter'; sim.target = null; sim.caution = 0; sim.putAwaySwatter();
-      sim.watchScreen = sim.environment === 'computer'; l.crossingUntil = 0; l.visits++; sim.waypointUntil = 0;
+      sim.watchScreen = sim.environment === 'computer'; l.crossingUntil = 0; l.visits++; sim.waypointUntil = 0; sim.waypoint = { x: sim.x, z: sim.z };
       sim.log(`Arrived at ${next.name}.`);
       if (!l.route.length) { l.destination = null; l.nextDecision = sim.time + 5; l.holdUntil = Math.max(l.holdUntil, sim.time + 30); }
     }

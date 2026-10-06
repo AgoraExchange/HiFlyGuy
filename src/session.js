@@ -1,6 +1,6 @@
 import { NEURAL_UNITS } from './simulation.js';
 import { decodeLife, isRoom, LIFE_STATES } from './life.js';
-import { Simulation, STIMULI, WORLD, seededRandom } from './simulation.js';
+import { Simulation, STIMULI, roomBounds, seededRandom } from './simulation.js';
 import { decodeTraining, TRAINING_STATES } from './training.js';
 
 export const SESSION_KEY = 'hiflyguy.world.v1';
@@ -41,15 +41,15 @@ export function decodeSession(raw) {
     const training = decodeTraining(w.training, w.time); if (!training) return null;
     if (!scalars.every(key => finite(w[key])) || !states.includes(w.state) || typeof w.appetite !== 'boolean') return null;
     if (!unit(w.distress)) return null;
-    if (!between(w.time, 0, 1e10) || !point(w, WORLD.flyRadius) || !between(w.y, 0, 4) || !unit(w.energy) || !unit(w.hunger) || !unit(w.caution)) return null;
+    if (!between(w.time, 0, 1e10) || !point(w, roomBounds(w.environment).flyRadius) || !between(w.y, 0, w.environment === 'playground' ? 10 : 4) || !unit(w.energy) || !unit(w.hunger) || !unit(w.caution)) return null;
     if (!between(w.speed, 0, 10) || !between(w.startle, 0, 100) || !id(w.nextId) || !id(w.nextMemoryId)) return null;
-    if (!Number.isInteger(w.randomState) || !between(w.randomState, 0, 4294967295) || !point(w.waypoint, WORLD.flyRadius)) return null;
+    if (!Number.isInteger(w.randomState) || !between(w.randomState, 0, 4294967295) || !point(w.waypoint, roomBounds(w.environment).flyRadius)) return null;
     if (!w.signals || !['scent', 'aversion', 'motor', 'reward'].every(key => unit(w.signals[key]))) return null;
     if (!Array.isArray(w.activity) || ![192,NEURAL_UNITS].includes(w.activity.length) || !w.activity.every(unit)) return null;
-    if (!Array.isArray(w.objects) || w.objects.length > 48 || !w.objects.every(o => o && id(o.id) && Object.hasOwn(STIMULI, o.kind) && point(o, WORLD.objectRadius) && unit(o.amount) && (o.room === undefined || isRoom(o.room)))) return null;
+    if (!Array.isArray(w.objects) || w.objects.length > 48 || !w.objects.every(o => o && id(o.id) && Object.hasOwn(STIMULI, o.kind) && point(o, roomBounds(o.room ?? w.environment).objectRadius) && unit(o.amount) && (o.room === undefined || isRoom(o.room)))) return null;
     if (w.objects.some(o => w.objects.filter(p => (p.room ?? w.environment) === (o.room ?? w.environment)).length > 8)) return null;
     if (new Set(w.objects.map(o => o.id)).size !== w.objects.length || w.objects.some(o => o.id >= w.nextId)) return null;
-    if (!Array.isArray(w.memories) || w.memories.length > 32 || !w.memories.every(m => m && id(m.id) && point(m, WORLD.objectRadius) && unit(m.strength) && Number.isSafeInteger(m.encounters) && m.encounters >= 0 && finite(m.lastEncounter) && finite(m.lastSeen) && (m.room === undefined || isRoom(m.room)))) return null;
+    if (!Array.isArray(w.memories) || w.memories.length > 32 || !w.memories.every(m => m && id(m.id) && point(m, roomBounds(m.room ?? w.environment).objectRadius) && unit(m.strength) && Number.isSafeInteger(m.encounters) && m.encounters >= 0 && finite(m.lastEncounter) && finite(m.lastSeen) && (m.room === undefined || isRoom(m.room)))) return null;
     if (new Set(w.memories.map(m => m.id)).size !== w.memories.length || w.memories.some(m => m.id >= w.nextMemoryId)) return null;
     if (w.targetId !== null && !w.objects.some(o => o.id === w.targetId && STIMULI[o.kind].scent > 0)) return null;
     if (!Array.isArray(w.events) || w.events.length > 100 || !w.events.every(e => e && between(e.time, 0, w.time) && typeof e.message === 'string' && e.message.length <= 500 && ['behavior', 'system', 'object', 'memory'].includes(e.type))) return null;

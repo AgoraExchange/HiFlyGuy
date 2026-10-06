@@ -1,3 +1,5 @@
+import { PARK } from './park-layout.js';
+import { noticeViewer } from './presence.js';
 import { roofWaypoint } from './room-navigation.js';
 import { newLife, updateLife, lifeMotion, roomHeight, ROOMS, LIFE_STATES } from './life.js';
 // A deliberately small, synthetic rate network. No FlyWire records are loaded.
@@ -15,6 +17,7 @@ export function seededRandom(seed = 42) {
 }
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 export const WORLD = { radius: 11, flyRadius: 9.9, objectRadius: 9.7 };
+export const roomBounds = room => room === 'playground' ? PARK : WORLD;
 export const SWATTER = { speed: 2.4, escapeSpeed: 5.4, alarmRadius: 3.8, clearance: 1.8, radius: 12 };
 export function withinHabitat(x, z, radius = WORLD.objectRadius) {
   const distance = Math.hypot(x, z), scale = distance > radius ? radius / distance : 1;
@@ -49,7 +52,7 @@ export class Simulation {
   roomMemories(room = this.environment) { return this.memories.filter(m => (m.room ?? this.environment) === room); }
   add(kind, x, z, room = this.environment) {
     if (!STIMULI[kind] || !Object.hasOwn(ROOMS, room) || this.roomObjects(room).length >= 8) return null;
-    const object = { id: this.nextId++, kind, room, ...withinHabitat(x, z), amount: 1 };
+    const object = { id: this.nextId++, kind, room, ...withinHabitat(x, z, roomBounds(room).objectRadius), amount: 1 };
     this.objects.push(object); this.log(`${STIMULI[kind].name} placed in ${ROOMS[room].name}.`, 'object'); return object;
   }
   remove(id) { this.objects = this.objects.filter(o => o.id !== id); if (this.target?.id === id) this.target = null; }
@@ -90,7 +93,7 @@ export class Simulation {
     for (let i = 0; i < 48; i++) {
       const a = i * Math.PI / 24, x = Math.sin(a), z = Math.cos(a);
       const px = this.x + x * 1.15, pz = this.z + z * 1.15;
-      if (Math.hypot(px, pz) > WORLD.flyRadius - 0.02) continue;
+      if (Math.hypot(px, pz) > roomBounds(this.environment).flyRadius - 0.02) continue;
       const clearance = Math.hypot(px - this.escapeX, pz - this.escapeZ);
       const continuity = (x * Math.sin(this.heading) + z * Math.cos(this.heading)) * 0.04;
       if (clearance + continuity > best) { best = clearance + continuity; direction = { x, z }; }
@@ -129,7 +132,7 @@ export class Simulation {
   chooseWaypoint() {
     let best, bestScore = -Infinity;
     for (let i = 0; i < 18; i++) {
-      const angle = this.random() * Math.PI * 2, radius = Math.sqrt(this.random()) * 8.7;
+      const angle = this.random() * Math.PI * 2, radius = Math.sqrt(this.random()) * (this.environment === 'playground' ? 34 : 8.7);
       const point = { x: Math.sin(angle) * radius, z: Math.cos(angle) * radius };
       const distance = Math.hypot(point.x - this.x, point.z - this.z);
       let risk = 0;
@@ -253,15 +256,16 @@ export class Simulation {
         dx += (distance > 0.01 ? mx / distance : 1) * force; dz += (distance > 0.01 ? mz / distance : 0) * force;
       }
       const edgeDistance = Math.hypot(this.x, this.z);
-      if (!navigatingRoof && !doorway && this.state !== 'Panicking' && edgeDistance > WORLD.flyRadius - 1.5) { const push = (edgeDistance - WORLD.flyRadius + 1.5) * 2; dx -= this.x / edgeDistance * push; dz -= this.z / edgeDistance * push; }
+      if (!navigatingRoof && !doorway && this.state !== 'Panicking' && edgeDistance > roomBounds(this.environment).flyRadius - 1.5) { const push = (edgeDistance - roomBounds(this.environment).flyRadius + 1.5) * 2; dx -= this.x / edgeDistance * push; dz -= this.z / edgeDistance * push; }
       const angle = Math.atan2(dx, dz), diff = Math.atan2(Math.sin(angle - this.heading), Math.cos(angle - this.heading));
       this.heading += diff * (this.state === 'Panicking' ? 1 : Math.min(1, dt * 2.8));
       const travelHeading = navigatingRoof || doorway ? angle : this.heading;
-      const next = withinHabitat(this.x + Math.sin(travelHeading) * velocity * dt, this.z + Math.cos(travelHeading) * velocity * dt, WORLD.flyRadius);
+      const next = withinHabitat(this.x + Math.sin(travelHeading) * velocity * dt, this.z + Math.cos(travelHeading) * velocity * dt, roomBounds(this.environment).flyRadius);
       this.x = next.x; this.z = next.z;
       this.energy = Math.max(0, this.energy - dt * 0.0018);
     }
     this.speed = velocity;
+    noticeViewer(this, dt);
     {
       desiredY = Math.max(desiredY, this.groundHeight() + .87);
       // Raise the approach before crossing a platform rim; no walking through it.

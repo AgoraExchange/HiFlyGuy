@@ -1,19 +1,22 @@
 // Authored virtual-pet reinforcement, independent of the synthetic neural net.
-export const PERCHES = [
-  { name: 'Sun pad', x: -5, z: -3, height: .55, color: '#edbd68' },
-  { name: 'Sky pad', x: 4, z: -4, height: 1.05, color: '#78c9d4' },
-  { name: 'Bloom pad', x: 3, z: 4, height: .75, color: '#cd94bf' },
-];
+import { PARK, PARK_PERCHES, parkSurfaceHeight } from './park-layout.js';
+export const PERCHES = PARK_PERCHES;
 export const HUMAN = { x: -3.5, z: 6.5 };
 export const HELLO_SPOT = { name: 'you', x: HUMAN.x, z: HUMAN.z - 1.9, height: 0 };
-export const recallTarget = selected => selected === 'you' ? HELLO_SPOT : PERCHES[selected];
+export const recallTarget = (selected, observer) => {
+  if (selected !== 'you') return PERCHES[selected];
+  if (!observer) return HELLO_SPOT;
+  let x=observer.x+(observer.forwardX??0)*2.8,z=observer.z+(observer.forwardZ??-1)*2.8;
+  const r=Math.hypot(x,z);if(r>PARK.flyRadius-.5){x*= (PARK.flyRadius-.5)/r;z*= (PARK.flyRadius-.5)/r;}
+  return { x,z,height:Math.max(parkSurfaceHeight(x,z),observer.y-PARK.eyeHeight) };
+};
 export const TRAINING_STATES = ['Listening', 'Coming when called', 'Practicing flip', 'Backflipping', 'Waiting for treat'];
 export function newTraining() {
   return { bond: .12, call: .08, flip: 0, selected: 0, cooldownUntil: 0, nextId: 1, active: null, pending: null, trials: [], message: 'Start with Practice call. Reward him when he lands.', nextVisitAt: 18, visitTarget: null, visitUntil: 0 };
 }
 export function surfaceHeight(environment, x, z) {
   if (environment !== 'playground') return 0;
-  return PERCHES.find(p => Math.hypot(x - p.x, z - p.z) <= 1.55)?.height ?? 0;
+  return parkSurfaceHeight(x, z);
 }
 export const cueChance = (sim, kind) => Math.min(.98, .2 + sim.training[kind] * .65 + sim.training.bond * .15);
 export const flipUnlocked = sim => sim.training.bond >= .25 && sim.training.call >= .3;
@@ -73,10 +76,10 @@ export function lessonMotion(sim) {
   const floor = surfaceHeight(sim.environment, sim.x, sim.z);
   if (sim.time - a.started < a.delay) return { state: 'Listening', velocity: 0, y: floor + .87 };
   if (a.kind === 'call') {
-    const p = recallTarget(a.perch), dx = p.x - sim.x, dz = p.z - sim.z, arrived = Math.hypot(dx, dz) < .5;
-    if (arrived && a.perch === 'you') sim.heading = Math.atan2(HUMAN.x - sim.x, HUMAN.z - sim.z);
+    const p = recallTarget(a.perch,sim.observer), dx = p.x - sim.x, dz = p.z - sim.z, arrived = Math.hypot(dx, dz) < .5;
+    if (arrived && a.perch === 'you') sim.heading = Math.atan2((sim.observer??HUMAN).x - sim.x, (sim.observer??HUMAN).z - sim.z);
     if (arrived && Math.abs(sim.y - p.height - .87) < .08) { complete(sim); return lessonMotion(sim); }
-    return { state: 'Coming when called', dx, dz, velocity: arrived ? 0 : 1.1 + t.call * 1.4, y: p.height + .87 + (arrived ? 0 : .6) };
+    return { state: 'Coming when called', dx, dz, velocity: arrived ? 0 : Math.max(1.1 + t.call * 1.4, Math.min(4, Math.hypot(dx, dz) / 7)), y: p.height + .87 + (arrived ? 0 : .6) };
   }
   a.phaseAt ??= sim.time;
   const progress = (sim.time - a.phaseAt) / 1.8;
@@ -90,7 +93,7 @@ export function perchMotion(sim) {
   const p = PERCHES[t.visitTarget], dx = p.x - sim.x, dz = p.z - sim.z, arrived = Math.hypot(dx, dz) < .5;
   if (arrived && !t.visitUntil) t.visitUntil = sim.time + 7;
   if (t.visitUntil && sim.time >= t.visitUntil) { t.visitTarget = null; t.nextVisitAt = sim.time + 18; return null; }
-  return { state: arrived ? 'Perching' : 'Finding a perch', dx, dz, velocity: arrived ? 0 : 1.15, y: p.height + .87 + (arrived ? 0 : .7) };
+  return { state: arrived ? 'Perching' : 'Finding a perch', dx, dz, velocity: arrived ? 0 : Math.max(1.15, Math.min(3.5, Math.hypot(dx, dz) / 8)), y: p.height + .87 + (arrived ? 0 : .7) };
 }
 
 export function decodeTraining(value, time) {

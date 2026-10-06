@@ -1,3 +1,7 @@
+import { FirstPerson } from './first-person.js';
+import './first-person.css';
+import { setupDialogue } from './dialogue-ui.js';
+import './dialogue.css';
 import { callBuzz, workPerk, shiftClock, SHIFT_SECONDS } from './social-life.js';
 import { ROOMS, invite, setDeskFocus } from './life.js';
 import './style.css';
@@ -5,7 +9,7 @@ import { setupMembership } from './membership.js';
 import { scopedStorage } from './access-policy.js';
 import { scienceHTML, helpHTML } from './world-copy.js';
 import './computer-room.css';
-import { Simulation, STIMULI, withinHabitat } from './simulation.js';
+import { Simulation, STIMULI, withinHabitat, roomBounds } from './simulation.js';
 import { Habitat, BrainView } from './scene.js';
 import { loadSession, saveSession } from './session.js';
 import { playgroundControls, setupTrainingUI, updateTrainingUI } from './training-ui.js';
@@ -92,6 +96,7 @@ let director, access;
 const allowed=(action,room=viewRoom)=>access?.allowed(action,room)??false;
 const authorize=(action,room=viewRoom)=>access?.require(action,room)??false;
 let habitat, brain, paused = restored?.paused ?? false, speed = restored?.speed ?? 1, placing = null, swatterEquipped = false, selectedId = null, history = [], lastSample = sim.time, lastUI = -1, toastTimer, logSignature = '', dialogMode;
+const dialogue = setupDialogue({ getStorage: () => storage, getHabitat: () => habitat });
 function saveWorld() {
   const saved = saveSession(storage, sim, { paused, speed, viewRoom });
   $('#save-label').textContent = saved ? 'WORLD SAVED' : 'SAVE UNAVAILABLE';
@@ -126,8 +131,9 @@ function removeObject(id) {
 }
 function place(x, z) { if (!placing) return; if(!allowed(placing==='peppermint'?'interact':'food',viewRoom)){cancelPlacement();return toast('Visitors can leave fruit in the Habitat. Choose that room first.');} const o = sim.add(placing, x, z, viewRoom); if (o) { toast(`${STIMULI[placing].name} added. Let’s see what happens.`); cancelPlacement(); renderObjects(); saveWorld(); } else { toast('Eight objects is plenty for this little world. Remove one first.'); cancelPlacement(); } }
 try { habitat = new Habitat($('#viewport'), place, selectObject, (x, z) => { if (x === null) sim.putAwaySwatter(); else if (allowed('interact') && viewRoom === sim.environment) sim.aimSwatter(x, z); }, index => { if(!allowed('interact'))return; sim.training.selected = index; selectObject(null); saveWorld(); }, ()=>authorize('interact')); brain = new BrainView($('#brain-view')); } catch (error) { console.error(error); $('#render-error').hidden = false; $('#render-error').textContent = 'The 3D view needs WebGL. Enable hardware acceleration in your browser, then reload HiFlyGuy.'; }
+if (habitat) habitat.firstPerson = new FirstPerson(habitat, { selectFruit: selectStimulus, place, cancelPlacement, inviteFly: () => $('#invite-fly').click() });
 setupTrainingUI(sim, saveWorld, toast, cancelPlacement, ()=>authorize('interact'));
-$('#vitals-note').insertAdjacentHTML('afterend', '<div class="work-life-panel"><strong>HIS EVERYDAY LIFE</strong><p id="work-ledger"></p><p id="buzz-status"></p><div class="life-location-actions"><button id="call-buzz">Call The Buzz</button><button id="paid-early">Paid day off</button><button id="overtime">Extra hours</button></div><small>Fictional dollars. An 8-hour shift takes 2 simulation minutes. Visits last 5-17 simulation minutes.</small></div>');
+$('#vitals-note').insertAdjacentHTML('afterend', '<div class="work-life-panel"><strong>HIS EVERYDAY LIFE</strong><p id="work-ledger"></p><p id="buzz-status"></p><div class="life-location-actions"><button id="call-buzz">Call The Buzz</button><button id="paid-early">Paid day off</button><button id="overtime">Extra hours</button></div><small>Virtual World Money. An 8 hour shift takes 2 minutes of real time.</small></div>');
 const socialAction = kind => {
   if (director?.busy || !authorize('interact')) return;
   if (paused) { toast('Resume his world first.'); return; }
@@ -185,7 +191,7 @@ $('#close-terminal').onclick = () => $('#terminal-dialog').close();
 $('#terminal-dialog').addEventListener('close', () => { moveTerminal(habitat.computerRoom.display); $('#terminal-btn').focus(); });
 window.addEventListener('message', e => { if (e.origin === location.origin && e.source === habitat?.computerRoom?.iframe.contentWindow && e.data?.type === 'terminal-escape') $('#terminal-dialog').close(); });
 refreshEnvironment();
-director = setupDirector({ authorize:()=>authorize('director'), allowed:()=>allowed('director'), viewport: $('#viewport'), prepare: () => { cancelPlacement(); selectObject(null); $('#dialog').close(); $('#terminal-dialog').close(); saveWorld(); } });
+director = setupDirector({ authorize:()=>authorize('director'), allowed:()=>allowed('director'), viewport: $('#viewport'), prepare: () => { habitat?.firstPerson?.exit(); dialogue.cancel(); cancelPlacement(); selectObject(null); $('#dialog').close(); $('#terminal-dialog').close(); saveWorld(); } });
 
 function selectStimulus(kind) {
   if(kind==='peppermint'&&!authorize('interact'))return;
@@ -195,7 +201,7 @@ function selectStimulus(kind) {
   if (sim.roomObjects(viewRoom).length >= 8) return toast('Habitat full. Remove an object to make a little room.');
   cancelPlacement(); selectObject(null); placing = kind;
   document.querySelectorAll('[data-stimulus]').forEach(b => { const active = b.dataset.stimulus === kind; b.classList.toggle('selected', active); b.setAttribute('aria-pressed', String(active)); });
-  habitat.setPlacement(true); $('#placement-message').textContent = `Click the floor inside the circle to place ${STIMULI[kind].name.toLowerCase()}.`; $('#placement-banner').hidden = false; $('#place-center').textContent = viewRoom === sim.environment ? 'Place near FlyGuy' : 'Place in this room';
+  habitat.setPlacement(true); $('#placement-message').textContent = `Click the floor inside the circle to place ${STIMULI[kind].name.toLowerCase()}.`; $('#placement-banner').hidden = false; $('#place-center').textContent = habitat.firstPerson?.active ? 'Place in front of you' : viewRoom === sim.environment ? 'Place near FlyGuy' : 'Place in this room';
 }
 document.querySelectorAll('[data-stimulus]').forEach(b => b.onclick = () => selectStimulus(b.dataset.stimulus));
 document.querySelectorAll('[data-tool="swatter"]').forEach(b => b.onclick = equipSwatter);
@@ -203,7 +209,7 @@ $('#put-away-swatter').onclick = cancelPlacement;
 window.addEventListener('blur', () => sim.putAwaySwatter());
 $('#reset-brain-btn').onclick = () => brain?.resetView();
 $('#cancel-placement').onclick = cancelPlacement;
-$('#place-center').onclick = () => { const p = withinHabitat(viewRoom === sim.environment ? sim.x + 1.8 : 0, viewRoom === sim.environment ? sim.z + .7 : 2); place(p.x, p.z); };
+$('#place-center').onclick = () => { if (habitat?.firstPerson?.active) { const p = habitat.firstPerson.ahead(); place(p.x, p.z); return; } const p = withinHabitat(viewRoom === sim.environment ? sim.x + 1.8 : 0, viewRoom === sim.environment ? sim.z + .7 : 2, roomBounds(viewRoom).objectRadius); place(p.x, p.z); };
 function setPaused(value) { paused = value; $('#pause-btn').innerHTML = icon(paused ? 'play' : 'pause'); $('#pause-btn').setAttribute('aria-label', paused ? 'Resume virtual world' : 'Pause virtual world'); $('#playback-status').textContent = paused ? 'Virtual World Paused' : 'Virtual World Running'; $('#run-label').textContent = paused ? 'PAUSED' : 'LIVE'; document.body.classList.toggle('paused', paused); saveWorld(); }
 $('#pause-btn').onclick = () => {if(authorize('interact'))setPaused(!paused);};
 document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => { if(!authorize('interact'))return; speed = +b.dataset.speed; saveWorld(); document.querySelectorAll('[data-speed]').forEach(c => c.classList.toggle('active', b === c)); toast(`Time moves at ${speed}× speed.`); });
@@ -219,7 +225,7 @@ document.addEventListener('fullscreenchange', () => {
 $('#remove-selected-btn').onclick = () => removeObject(selectedId);
 $('#memory-btn').onclick = () => openDialog('science');
 $('#clear-btn').onclick = () => { if(!authorize('interact'))return; sim.clear(viewRoom); selectObject(null); renderObjects(); cancelPlacement(); saveWorld(); toast('Objects cleared. Learned memories remain until they fade or you reset.'); };
-$('#reset-btn').onclick = () => { if(!authorize('interact'))return; sim.reset(); viewRoom = 'habitat'; lastResidence = sim.environment; refreshEnvironment(); selectObject(null); history = []; lastSample = 0; logSignature = ''; habitat?.resetTrail(); habitat?.frame(); $('#focus-btn').classList.remove('active'); $('#focus-btn').setAttribute('aria-pressed', 'false'); setPaused(false); cancelPlacement(); renderObjects(); saveWorld(); toast('A new beginning for FlyGuy.'); };
+$('#reset-btn').onclick = () => { if(!authorize('interact'))return; dialogue.reset(); sim.reset(); viewRoom = 'habitat'; lastResidence = sim.environment; refreshEnvironment(); selectObject(null); history = []; lastSample = 0; logSignature = ''; habitat?.resetTrail(); habitat?.frame(); $('#focus-btn').classList.remove('active'); $('#focus-btn').setAttribute('aria-pressed', 'false'); setPaused(false); cancelPlacement(); renderObjects(); saveWorld(); toast('A new beginning for FlyGuy.'); };
 function renderObjects() {
   const objects = sim.roomObjects(viewRoom);
   $('#object-count').textContent = `${objects.length} object${objects.length === 1 ? '' : 's'}`; $('#clear-btn').disabled = !objects.length;
@@ -251,7 +257,7 @@ document.addEventListener('keydown', e => {
   if (['1', '2', '3', '4'].includes(e.key)) { e.preventDefault(); if (e.key === '4') equipSwatter(); else selectStimulus(Object.keys(STIMULI)[+e.key - 1]); }
   if (e.key === '5' || e.key === '6') { e.preventDefault(); socialAction(e.key === '5' ? 'buzz' : 'smoke'); }
   if (e.key === 'Delete' && selectedId !== null) { e.preventDefault(); removeObject(selectedId); }
-  if (e.code === 'Space' && !['BUTTON', 'A'].includes(document.activeElement.tagName)) { e.preventDefault(); if(authorize('interact'))setPaused(!paused); }
+  if (e.code === 'Space' && !habitat?.firstPerson?.active && !['BUTTON', 'A'].includes(document.activeElement.tagName)) { e.preventDefault(); if(authorize('interact'))setPaused(!paused); }
 });
 
 function chart() {
@@ -323,7 +329,7 @@ let memberUid='guest',previousAccess=false;
 function applyMembership(state){
   const uid=state.user?.uid??'guest',paid=access?.allowed('interact')??false;
   if(uid!==memberUid){
-    saveWorld();cancelPlacement();selectObject(null);storage=scopedStorage(browserStorage,uid);
+    saveWorld();cancelPlacement();selectObject(null);storage=scopedStorage(browserStorage,uid);dialogue.load();
     const saved=loadSession(storage);Object.assign(sim,saved?.sim??new Simulation());
     paused=saved?.paused??false;speed=saved?.speed??1;viewRoom=saved?.viewRoom??sim.environment;lastResidence=sim.environment;
     history=[];lastSample=sim.time;logSignature='';habitat?.resetTrail();refreshEnvironment();memberUid=uid;setPaused(paused);document.querySelectorAll('[data-speed]').forEach(b=>b.classList.toggle('active',+b.dataset.speed===speed));
@@ -343,11 +349,14 @@ function applyMembership(state){
 let previous = performance.now(), accumulator = 0;
 function animate(now) {
   requestAnimationFrame(animate); const rawElapsed = Math.max(0, (now - previous) / 1000), elapsed = Math.min(rawElapsed, 0.1); previous = now;
-  if (director?.busy) { director.update(); return; }
-  if (!paused && !document.hidden) { accumulator += elapsed * speed; while (accumulator >= 1 / 60) { sim.tick(1 / 60); accumulator -= 1 / 60; } }
+  if (director?.busy) { dialogue.cancel(); director.update(); return; }
+  habitat?.firstPerson?.update(elapsed, sim);
+  const dialogueBlocked = !!placing || swatterEquipped || !!document.querySelector('dialog[open]') || !habitat || !!habitat.down || habitat.placing || habitat.swatterMode;
+  dialogue.update(elapsed, sim, { running: !paused && !document.hidden, viewRoom, blocked: dialogueBlocked });
+  if (!paused && !document.hidden && !habitat?.encounter) { accumulator += elapsed * speed; while (accumulator >= 1 / 60) { sim.tick(1 / 60); accumulator -= 1 / 60; } }
   if (sim.time - lastSample >= 0.1) { lastSample = sim.time; history.push({ time: sim.time, ...sim.signals }); history = history.filter(s => sim.time - s.time <= 30); }
   habitat?.computerRoom?.updateDesk(elapsed, sim, !paused && !document.hidden);
-  habitat?.update(sim, !paused); brain?.update(sim);
+  habitat?.update(sim, !paused && !habitat?.encounter); brain?.update(sim); dialogue.position();
   if (now - lastUI > 150) { updateUI(); lastUI = now; }
   if (habitat) { const p = habitat.fly.group.position.clone(); p.y += 0.6; p.project(habitat.camera); const x = (p.x * 0.5 + 0.5) * $('#viewport').clientWidth, y = (-p.y * 0.5 + 0.5) * $('#viewport').clientHeight; const el = $('#fly-label'); el.style.left = `${x + 45}px`; el.style.top = `${y - 25}px`; el.style.visibility = sim.environment !== viewRoom || p.z > 1 || x < 0 || x > $('#viewport').clientWidth - 170 || y < 80 || y > $('#viewport').clientHeight - 80 ? 'hidden' : 'visible'; }
 }

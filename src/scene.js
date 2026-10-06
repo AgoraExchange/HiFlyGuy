@@ -1,9 +1,10 @@
 import { LifeScenes, addLifeProps, animateLifeProps } from './life-scenes.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { seededRandom, WORLD } from './simulation.js';
+import { seededRandom, WORLD, roomBounds } from './simulation.js';
 import { ComputerRoom } from './computer-room.js';
 import { Playground } from './playground.js';
+import { approachViewer } from './presence.js';
 
 const vec = (x, y, z) => new THREE.Vector3(x, y, z);
 const material = (color, roughness = 0.65, metalness = 0.15) => new THREE.MeshStandardMaterial({ color, roughness, metalness });
@@ -186,7 +187,7 @@ export class Habitat {
     this.renderer.domElement.addEventListener('pointermove', e => {
       if (this.swatterMode) { const p = hit(e, 1.8); if (p) onSwatterAim(p.x, p.z); return; }
       if (this.down && Math.hypot(e.clientX - this.down[0], e.clientY - this.down[1]) > 6) this.dragged = true;
-      if (this.placing) { const p = hit(e); this.ghost.visible = !!p && Math.hypot(p.x, p.z) <= WORLD.objectRadius; if (p) this.ghost.position.set(p.x, p.y + 0.03, p.z); }
+      if (this.placing) { const p = hit(e); this.ghost.visible = !!p && Math.hypot(p.x, p.z) <= roomBounds(this.environment).objectRadius; if (p) this.ghost.position.set(p.x, p.y + 0.03, p.z); }
       else if (this.computerRoom?.visible && !this.down) { hit(e); this.renderer.domElement.style.cursor = this.computerRoom.screenHit(this.ray, this.scene) ? 'pointer' : 'grab'; }
     });
     this.renderer.domElement.addEventListener('pointerdown', e => { if (this.swatterMode) { const p = hit(e, 1.8); if (p) onSwatterAim(p.x, p.z); this.renderer.domElement.setPointerCapture(e.pointerId); return; } if (this.down) this.dragged = true; else { this.down = [e.clientX, e.clientY]; this.dragged = false; } });
@@ -208,8 +209,9 @@ export class Habitat {
     });
     new ResizeObserver(() => this.resize()).observe(container); this.resize();
   }
-  resize() { const w = this.container.clientWidth, h = this.container.clientHeight; if (!w || !h) return; this.camera.aspect = w / h; this.camera.fov = w < h ? 55 : 38; this.camera.updateProjectionMatrix(); this.renderer.setSize(w, h); this.computerRoom?.resize(w, h); if (this.homeFraming) this.frame(); }
+  resize() { const w = this.container.clientWidth, h = this.container.clientHeight; if (!w || !h) return; this.camera.aspect = w / h; this.camera.fov = this.firstPerson?.active ? 65 : w < h ? 55 : 38; this.camera.updateProjectionMatrix(); this.renderer.setSize(w, h); this.computerRoom?.resize(w, h); if (this.homeFraming) this.frame(); }
   setEnvironment(environment) {
+    this.firstPerson?.exit(); this.endEncounter();
     this.environment = environment; this.resetTrail(); this.lifeScenes.setRoom(environment); const computer = environment === 'computer';
     if (computer && !this.computerRoom) this.computerRoom = new ComputerRoom(this.container, this.scene, this.authorizeTerminal);
     this.computerRoom?.setVisible(computer);
@@ -226,13 +228,73 @@ export class Habitat {
     if (environment === 'playground') this.scene.background.set('#18252a');
     this.scene.fog.color.copy(this.scene.background); this.scene.fog.near = ['rooftop', 'fireescape'].includes(environment) ? 40 : 30; this.scene.fog.far = ['rooftop', 'fireescape'].includes(environment) ? 155 : 80;
     this.container.dataset.environment = environment;
-    this.controls.maxDistance = 48;
+    this.controls.maxDistance = environment === 'playground' ? 145 : 48;
+    if(environment === 'playground'){
+      this.scenery.grid.visible = this.scenery.boundary.visible = this.scenery.floor.visible = false;
+      this.scene.background.set('#777b75'); this.scene.fog.color.set('#777b75'); this.scene.fog.near=150; this.scene.fog.far=290;
+      this.scenery.sun.color.set('#ffe4ba'); this.scenery.sun.intensity=3.4; this.scenery.sun.position.set(-24,40,18);
+      Object.assign(this.scenery.sun.shadow.camera,{left:-45,right:45,top:40,bottom:-40,far:130});this.scenery.sun.shadow.camera.updateProjectionMatrix();this.scenery.sun.shadow.normalBias=.045;
+      this.scenery.rim.color.set('#b5c9d0');this.scenery.rim.intensity=1.1;
+    } else {
+      this.scenery.sun.color.set('#f2dfb2');this.scenery.sun.position.set(3,10,5);
+      Object.assign(this.scenery.sun.shadow.camera,{left:-9,right:9,top:9,bottom:-9,far:500});this.scenery.sun.shadow.camera.updateProjectionMatrix();this.scenery.sun.shadow.normalBias=0;this.scenery.rim.intensity=2;
+    }
     this.resize(); this.frame();
   }
-  setPlacement(enabled) { this.placing = enabled; this.controls.enabled = !enabled && !this.swatterMode; this.ghost.visible = false; this.renderer.domElement.style.cursor = enabled || this.swatterMode ? 'crosshair' : 'grab'; }
+  setPlacement(enabled) { this.placing = enabled; this.controls.enabled = !enabled && !this.swatterMode && !this.firstPerson?.active; this.ghost.visible = false; this.renderer.domElement.style.cursor = enabled || this.swatterMode ? 'crosshair' : 'grab'; }
   setSwatter(enabled) { this.swatterMode = enabled; this.down = null; this.dragged = false; this.setPlacement(false); if (!enabled) this.swatterModel.visible = false; }
   setSelected(id) { this.selectedId = id; this.selection.visible = false; }
-  frame(close = false) { this.follow = close; this.homeFraming = !close; const p = this.fly.group.position; const computer = this.environment === 'computer', playground = this.environment === 'playground', portrait = this.camera.aspect < 1; this.controls.enableDamping = false; this.controls.update(); this.controls.target.copy(close ? p : computer ? vec(0, portrait ? 3 : 6.3, -7) : playground ? vec(portrait ? 0 : -1.5, .7, 0) : vec(0, this.environment === 'rooftop' ? 4 : 1.5, -2)); this.camera.position.copy(close ? p.clone().add(this.environment === 'fireescape' ? vec(3.8, 3.5, 1.2) : this.environment === 'bar' ? vec(4.5, 3, -1.2) : vec(3.8, 2.4, 4.4)) : computer ? (portrait ? vec(8, 14, 23) : vec(14, 12, 17)) : playground ? (portrait ? vec(5, 19, 30) : vec(10, 16, 22)) : (portrait ? vec(5, 16, 28) : this.environment === 'rooftop' ? vec(15, 11, 21) : vec(14, 12, 19))); this.controls.update(); this.controls.enableDamping = true; }
+  frame(close = false) { this.firstPerson?.exit(); this.endEncounter(); this.follow = close; this.homeFraming = !close; const p = this.fly.group.position; const computer = this.environment === 'computer', playground = this.environment === 'playground', portrait = this.camera.aspect < 1; this.controls.enableDamping = false; this.controls.update(); this.controls.target.copy(close ? p : computer ? vec(0, portrait ? 3 : 6.3, -7) : playground ? vec(portrait ? 0 : -1.5, .7, 0) : vec(0, this.environment === 'rooftop' ? 4 : 1.5, -2)); this.camera.position.copy(close ? p.clone().add(this.environment === 'fireescape' ? vec(3.8, 3.5, 1.2) : this.environment === 'bar' ? vec(4.5, 3, -1.2) : vec(3.8, 2.4, 4.4)) : computer ? (portrait ? vec(8, 14, 23) : vec(14, 12, 17)) : playground ? (portrait ? vec(65, 102, 128) : vec(76, 82, 91)) : (portrait ? vec(5, 16, 28) : this.environment === 'rooftop' ? vec(15, 11, 21) : vec(14, 12, 19))); this.controls.update(); this.controls.enableDamping = true; }
+  startEncounter(duration) {
+    if (this.encounter) return;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const origin = this.fly.group.position.clone();
+    if (this.firstPerson?.active) {
+      const destination = this.firstPerson.addressSpot(); if (!destination) return;
+      this.encounter = { firstPerson: true, origin, destination, camera: this.camera.position.clone(), elapsed: 0, duration: duration + 4.5 };
+      this.firstPerson.keys.clear(); return;
+    }
+    const direction = this.camera.position.clone().sub(origin); direction.y = 0; direction.normalize();
+    const destination = origin.clone().addScaledVector(direction, 2.4); destination.y += 2;
+    this.encounter = { elapsed: 0, duration: duration + 4.5, reduced, origin, destination,
+      camera: this.camera.position.clone(), target: this.controls.target.clone(),
+      closeCamera: destination.clone().addScaledVector(direction, 6.5).add(vec(0, 1, 0)),
+      heading: Math.atan2(direction.x, direction.z), enabled: this.controls.enabled, damping: this.controls.enableDamping };
+    this.controls.enabled = false; this.controls.enableDamping = false;
+  }
+  advanceEncounter(dt) {
+    if (!this.encounter) return;
+    this.encounter.elapsed += Math.max(0, Math.min(dt, .1));
+    if (this.encounter.elapsed >= this.encounter.duration) this.endEncounter();
+  }
+  endEncounter() {
+    const e = this.encounter; if (!e) return;
+    if (e.firstPerson) { this.fly.group.position.copy(e.origin); this.encounter = null; this.firstPerson.previousFly = null; return; }
+    this.camera.position.copy(e.camera); this.controls.target.copy(e.target);
+    this.fly.group.position.copy(e.origin);
+    this.controls.enabled = e.enabled; this.controls.enableDamping = e.damping;
+    this.encounter = null; this.controls.update();
+  }
+  applyEncounter(sim) {
+    const e = this.encounter; if (!e || e.reduced && !e.firstPerson) return;
+    const smooth = value => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
+    const returning = e.elapsed > e.duration - 2;
+    const flyMix = returning ? smooth((e.duration - e.elapsed) / 2) : smooth(e.elapsed / 2);
+    if (e.firstPerson) {
+      this.fly.group.position.copy(approachViewer(e.origin, e.destination, e.camera, flyMix));
+      animateFly(this.fly, { ...sim, time: sim.time + e.elapsed, state: 'Exploring', speed: 1, y: this.fly.group.position.y, groundHeight: () => 0 });
+      this.fly.group.lookAt(this.camera.position);
+      this.marker.visible = this.trail.visible = false; return;
+    }
+    const cameraMix = returning ? flyMix : smooth((e.elapsed - .7) / 1.8);
+    this.fly.group.position.lerpVectors(e.origin, e.destination, flyMix);
+    this.fly.group.position.y += Math.sin(e.elapsed * 3) * .065 * flyMix;
+    this.fly.group.rotation.y = sim.heading + Math.atan2(Math.sin(e.heading - sim.heading), Math.cos(e.heading - sim.heading)) * flyMix;
+    animateFly(this.fly, { ...sim, time: sim.time + e.elapsed, state: 'Exploring', speed: 1, y: this.fly.group.position.y, groundHeight: () => 0 });
+    this.camera.position.lerpVectors(e.camera, e.closeCamera, cameraMix);
+    this.controls.target.lerpVectors(e.target, e.destination.clone().add(vec(0, .3, 0)), cameraMix);
+    this.marker.visible = this.trail.visible = false;
+  }
   resetTrail() { this.trailPoints = []; this.lastTrail = 0; this.trail.geometry.dispose(); this.trail.geometry = new THREE.BufferGeometry(); }
   update(sim, running) {
     const present = sim.environment === this.environment;
@@ -249,7 +311,7 @@ export class Habitat {
     this.marker.material.color.set(sim.state === 'Panicking' ? '#e6a272' : '#ddeb99');
     this.marker.position.set(sim.x, sim.groundHeight() + 0.015, sim.z);
     if (this.environment === 'playground') { this.playground.update(sim); }
-    if (this.follow && present) { const delta = this.fly.group.position.clone().sub(p); this.camera.position.add(delta); this.controls.target.copy(this.fly.group.position); }
+    if (this.follow && present && !this.encounter) { const delta = this.fly.group.position.clone().sub(p); this.camera.position.add(delta); this.controls.target.copy(this.fly.group.position); }
     if (present && running && sim.time - this.lastTrail > 0.15) { this.lastTrail = sim.time; this.trailPoints.push(vec(sim.x, 0.025, sim.z)); if (this.trailPoints.length > 200) this.trailPoints.shift(); this.trail.geometry.dispose(); this.trail.geometry = new THREE.BufferGeometry().setFromPoints(this.trailPoints); }
     for (const [id, g] of this.objects) if (!sim.objects.some(o => o.id === id)) { this.scene.remove(g); g.traverse(c => { c.geometry?.dispose(); if (c.material) c.material.dispose(); }); this.objects.delete(id); }
     for (const o of sim.objects) {
@@ -271,7 +333,7 @@ export class Habitat {
       }
       const marker = this.memoryMarkers.get(memory.id); marker.position.set(memory.x, 0.035, memory.z); marker.visible = this.showMemory && (memory.room ?? sim.environment) === this.environment; marker.material.opacity = 0.1 + memory.strength * 0.6;
     }
-    this.controls.update(); this.computerRoom?.update(this.camera, sim); this.renderer.render(this.scene, this.camera);
+    this.applyEncounter(sim); this.firstPerson?.resolvePresence(sim); if (!this.firstPerson?.active) this.controls.update(); this.computerRoom?.update(this.camera, sim); this.renderer.render(this.scene, this.camera);
   }
 }
 
