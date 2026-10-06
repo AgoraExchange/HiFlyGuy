@@ -2,6 +2,19 @@ import { test, expect } from './member-fixture.js';
 import { Simulation } from '../../src/simulation.js';
 import { ROOMS } from '../../src/life.js';
 import { encodeSession } from '../../src/session.js';
+import { workPerk } from '../../src/social-life.js';
+
+test('Post-shift grocery flight renders above checkout with a visible bag', async ({ page }) => {
+  const sim=new Simulation();sim.environment='store';sim.x=-2;sim.z=-7.2;sim.y=1.72;sim.heading=0;
+  sim.life.autonomous=false;sim.life.social.onClock=true;sim.life.social.cash=100;
+  workPerk(sim,'early');for(let i=0;i<180;i++)sim.tick(1/60);
+  expect(sim.state).toBe('Buying groceries');expect(sim.y).toBeGreaterThan(3.3);
+  await page.addInitScript(raw=>localStorage.setItem('hiflyguy.account.test-creator.hiflyguy.world.v1',raw),encodeSession(sim,{paused:true}));
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('/');await expect(page.locator('#behavior-pill')).toHaveText('Buying groceries');
+  await page.locator('#viewport').screenshot({path:'test-results/grocery-checkout-clearance.png'});
+  expect(errors).toEqual([]);
+});
 
 test('Room cameras, local inventory, invitations and an absent fly survive reloads', async ({ page }) => {
   const errors = []; page.on('pageerror', e => errors.push(e.message));

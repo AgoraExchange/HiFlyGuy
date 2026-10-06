@@ -107,6 +107,11 @@ export function animateFly(fly, sim) {
     const rubbing = [[0, 0, 0], [side * 0.24, -0.05 + faceSweep, 0.36], [-side * 0.21, -0.13 + faceSweep + rub * 0.035, 0.72], [-side * 0.28 + rub * 0.025, -0.2 + faceSweep + rub * 0.055, 0.95 + rub * 0.055]];
     if (typing) { rubbing[1] = [side * .28, -.1, .5]; rubbing[2] = [side * .4, -.4 + Math.sin(t * 15 + side * 2) * .09, 1]; rubbing[3] = [side * .45, -.65 + Math.sin(t * 15 + side * 2) * .12, 1.25]; }
     if (holding) { rubbing[2] = [side * .08, .05 + Math.sin(t * 1.1) * .14, .67]; rubbing[3] = [side * .05, .03 + Math.sin(t * 1.1) * .16, .87]; }
+    if (sim.state === 'Having a drink') {
+      // Both forefeet follow the glass instead of gripping empty air below it.
+      const grip=fly.lifeProps.glass.position.clone().add(vec(side*.17,-.04,0)).sub(leg.root.position);
+      rubbing[2]=[grip.x*.7,grip.y-.08,grip.z*.72];rubbing[3]=grip.toArray();
+    }
     const points = resting.map((p, i) => vec(...p).lerp(vec(...rubbing[i]), active));
     leg.root.rotation.x *= 1 - active;
     leg.joint.position.copy(points[1]);

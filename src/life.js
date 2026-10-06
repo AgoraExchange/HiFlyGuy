@@ -1,4 +1,4 @@
-import { doorApron } from './room-navigation.js';
+import { doorApron, crossesCheckout } from './room-navigation.js';
 import { newSocial, decodeSocial, updateSocial, dismissBuzz } from './social-life.js';
 // Authored fictional routines, separate from the illustrative neural controller.
 export const ROOMS = {
@@ -37,7 +37,7 @@ function startTravel(sim, room) {
 export function roomHeight(room, x, z) {
   if (room === 'habitat' && Math.abs(x + 3.5) <= 3.1 && Math.abs(z + 3) <= 3) return .85;
   if (room === 'store' && z < -5 && Math.abs(x + 2) < 1.5) return .85;
-  if (room === 'bar' && [-4, 0, 4].some(seat => Math.hypot(x - seat, z + 3.4) <= 1.2)) return 1.35;
+  if (room === 'bar' && [-4, 0, 4].some(seat => Math.hypot(x - seat, z + 3.4) <= 1.2)) return 1.9;
   return 0;
 }
 export function updateLife(sim, dt) {
@@ -64,21 +64,25 @@ export function lifeMotion(sim, dt) {
   if (sim.training.active || sim.training.pending) return null;
   const approach = (point, state, height = 1.6) => {
     const dx = point[0] - sim.x, dz = point[1] - sim.z;
+    if (sim.environment === 'store' && crossesCheckout([sim.x,sim.z], point)) {
+      // Rise before crossing the desk, including the register, then land on the other side.
+      return { state, dx, dz, velocity: sim.y < 3.45 ? 0 : 1.65, y: 3.6, ascending: sim.y < 3.45 };
+    }
     return { state, dx, dz, velocity: Math.hypot(dx, dz) < .45 ? 0 : 1.65, y: height };
   };
   if (l.doorway === 'enter') {
     const motion = approach(doorApron(sim.environment, room.exit), 'Crossing doorway', 1.8);
-    if (motion.velocity) return motion;
+    if (motion.velocity || motion.ascending) return motion;
     l.doorway = null;
   }
   if (l.route.length) {
     if (l.doorway !== 'leave' && !l.crossingUntil) {
       const landing = approach(doorApron(sim.environment, room.exit), 'Heading out', 1.8);
-      if (landing.velocity) return landing;
+      if (landing.velocity || landing.ascending) return landing;
       l.doorway = 'leave';
     }
     const motion = approach(room.exit, 'Crossing doorway', 1.8);
-    if (motion.velocity) return motion;
+    if (motion.velocity || motion.ascending) return motion;
     l.crossingUntil ||= sim.time + 1.4;
     if (sim.time >= l.crossingUntil) {
       if (l.route.includes('store')) dismissBuzz(sim, 'Goodbyes at the door. The Buzz heads home; FlyGuy heads to work.');
@@ -99,12 +103,12 @@ export function lifeMotion(sim, dt) {
     if (s.onClock) {
       const smoking = sim.time < s.breakUntil;
       const motion = approach(smoking ? [6, 3] : room.station, 'Settling in', smoking ? .87 : 1.72);
-      if (!motion.velocity) { motion.state = smoking ? 'Smoking' : 'Working'; sim.heading = 0; }
+      if (!motion.velocity && !motion.ascending) { motion.state = smoking ? 'Smoking' : 'Working'; sim.heading = 0; }
       if (smoking) l.stress = clamp(l.stress - dt * .006);
       return motion;
     }
     if (sim.time < s.shoppingUntil) {
-      const motion = approach([-6, -4], 'Buying groceries', .87);
+      const motion = approach([-5, -.8], 'Buying groceries', .87);
       return motion;
     }
     if (l.autonomous) {

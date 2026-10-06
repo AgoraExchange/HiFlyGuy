@@ -1,6 +1,13 @@
 // Rooftop stairwell footprint, padded for the fly's body and folded doorway wings.
 const bounds = [-8.6, -3.4, -.8, 4.6];
 export function crossesStairwell(a, b) {
+  return crossesBounds(a, b, bounds);
+}
+// Checkout top plus room for the fly's head, feet, and grocery bag.
+export function crossesCheckout(a, b) {
+  return crossesBounds(a, b, [-8.6, 6.6, -6.5, -1.7]);
+}
+function crossesBounds(a, b, bounds) {
   let lo = 0, hi = 1;
   for (const [axis, min, max] of [[0,bounds[0],bounds[1]],[1,bounds[2],bounds[3]]]) {
     const d = b[axis] - a[axis];

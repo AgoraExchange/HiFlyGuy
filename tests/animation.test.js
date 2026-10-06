@@ -1,6 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createFly, animateFly } from '../src/scene.js';
+import { Box3 } from 'three';
+import { roomHeight } from '../src/life.js';
+
+test('The entire drinking glass stays above the bar through a full sip and body sway', () => {
+  const fly=createFly(), y=roomHeight('bar',0,-3.4)+.87;
+  fly.group.position.set(0,y,-3.4);fly.group.rotation.y=Math.PI;
+  for(let time=0;time<12;time+=.1){
+    animateFly(fly,{environment:'bar',state:'Having a drink',time,y,speed:0,life:{motivation:0,buzz:1},groundHeight:()=>y-.87});
+    fly.group.updateMatrixWorld(true);
+    assert.ok(new Box3().setFromObject(fly.lifeProps.glass).min.y>=2.459);
+  }
+});
 
 test('Feeding and grooming have distinct foreleg poses and freeze at fixed simulation time', () => {
   const fly = createFly();

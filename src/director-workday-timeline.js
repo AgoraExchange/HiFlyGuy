@@ -50,7 +50,7 @@ export function sampleWorkday(time) {
  }
  if(shot.id==='bar'){
    const seat=(x,scale,delay)=>{
-     const progress=clamp((t-25-delay)/1.7),a=flyTo([x,3,.7],[x,1.35+.87*scale,-3.4],progress,.5);
+     const progress=clamp((t-25-delay)/1.7),a=flyTo([x,3,.7],[x,1.9+.87*scale,-3.4],progress,.5);
      a.heading=Math.PI;if(progress===1)a.state='Having a drink';return a;
    };
    frame.actor=seat(0,1,0);frame.companions=[seat(-4,.66,.25),seat(4,.66,.5)];

@@ -119,8 +119,8 @@ export class LifeScenes {
     box(g, [15, 2.2, 2.5], [-1, 1.1, -6.4], wood); box(g, [15.7, .22, 3], [-1, 2.3, -6.4], mat('#5a4234'));
     rod(g, [-8, .45, -4.6], [6, .45, -4.6], .07, mat('#9f8258', .7));
     for (const x of [-4, 0, 4]) {
-      const seat = new T.Mesh(new T.CylinderGeometry(1.2, 1.2, .25, 32), mat('#65423a')); seat.position.set(x, 1.225, -3.4); seat.castShadow = true; g.add(seat); g.userData.surfaces.push(seat);
-      for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) rod(g, [x + Math.sin(a) * .6, 1.1, -3.4 + Math.cos(a) * .6], [x + Math.sin(a) * .8, 0, -3.4 + Math.cos(a) * .8], .055);
+      const seat = new T.Mesh(new T.CylinderGeometry(1.2, 1.2, .25, 32), mat('#65423a')); seat.position.set(x, 1.775, -3.4); seat.castShadow = true; g.add(seat); g.userData.surfaces.push(seat);
+      for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) rod(g, [x + Math.sin(a) * .6, 1.65, -3.4 + Math.cos(a) * .6], [x + Math.sin(a) * .8, 0, -3.4 + Math.cos(a) * .8], .055);
     }
     for (const y of [3.7, 5.4]) {
       box(g, [13, .15, 1], [-1, y, -8.4], wood);
@@ -259,6 +259,7 @@ export function addLifeProps(fly) {
   const glass = new T.Group(); fly.group.add(glass);
   const cup = new T.Mesh(new T.CylinderGeometry(.19, .15, .42, 20, 1, true), new T.MeshPhysicalMaterial({ color: '#c9e5eb', transparent: true, opacity: .35, roughness: .12, side: T.DoubleSide })); glass.add(cup);
   const drink = new T.Mesh(new T.CylinderGeometry(.16, .13, .24, 20), mat('#a76823')); drink.position.y = -.06; glass.add(drink);
+  const rim = new T.Mesh(new T.TorusGeometry(.19,.018,8,24),mat('#c9e5eb',.35));rim.rotation.x=Math.PI/2;rim.position.y=.21;glass.add(rim);
   const smoke = new T.Group(); fly.group.add(smoke);
   for (let i = 0; i < 16; i++) { const puff = new T.Mesh(new T.SphereGeometry(1, 10, 8), new T.MeshBasicMaterial({ color: '#adb9c3', transparent: true, opacity: .12, depthWrite: false })); smoke.add(puff); }
   const groceries=new T.Group();fly.group.add(groceries);box(groceries,[.5,.6,.3],[.65,-.3,.5],mat('#bb9568'));rod(groceries,[.48,0,.5],[.48,.16,.5],.025);rod(groceries,[.82,0,.5],[.82,.16,.5],.025);rod(groceries,[.48,.16,.5],[.82,.16,.5],.025);
@@ -271,7 +272,16 @@ export function animateLifeProps(fly, sim) {
   cigarette.visible = smoke.visible = sim.state === 'Smoking'; glass.visible = sim.state === 'Having a drink';
   const lift = (Math.sin(sim.time * 1.1) + 1) / 2;
   cigarette.position.set(.3, -.15 + lift * .22, 1.27); cigarette.rotation.y = -.3;
-  glass.position.set(-.5 + lift * .25, -.45 + lift * .55, 1.48); glass.rotation.z = -lift * .6;
+  glass.position.set(-.45 + lift * .22, .12 - lift * .15, 1.75 - lift * .43); glass.rotation.z = -lift * .4;
+  if (glass.visible && sim.environment === 'bar') {
+    // Keep the entire tilted glass above the bar even while the body sways or settles.
+    fly.group.updateMatrixWorld(true);
+    const bottom = new T.Box3().setFromObject(glass).min.y;
+    if (bottom < 2.46) {
+      const correction = new T.Vector3(0,2.46-bottom,0).applyQuaternion(fly.group.getWorldQuaternion(new T.Quaternion()).invert());
+      glass.position.add(correction);
+    }
+  }
   ember.scale.setScalar(.8 + lift * .4);
   smoke.children.forEach((p, i) => { const t = (sim.time * .24 + i / 16) % 1; p.position.set(.2 + Math.sin(t * 6 + i) * t * .4, .3 + t * 2.8, 1.65 - t * .8); p.scale.setScalar(.07 + t * .42); p.material.opacity = Math.sin(t * Math.PI) * .1; });
 }

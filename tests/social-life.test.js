@@ -6,6 +6,19 @@ import { callBuzz, workPerk, updateSocial, shiftClock } from '../src/social-life
 import { encodeSession, decodeSession } from '../src/session.js';
 import { sampleWorkday, WORKDAY_SHOTS } from '../src/director-workday-timeline.js';
 const advance=(sim,n)=>{for(let i=0;i<n*30;i++)sim.tick(1/30);};
+
+test('After clocking out, groceries are collected outside checkout and crossing clears the register',()=>{
+ const sim=new Simulation();sim.environment='store';sim.x=-2;sim.z=-7.2;sim.y=1.72;sim.heading=0;
+ sim.life.autonomous=false;sim.life.social.onClock=true;sim.life.social.cash=100;
+ assert.equal(workPerk(sim,'early'),true);
+ let crossed=false,arrived=false;
+ for(let i=0;i<12*60;i++){
+  sim.tick(1/60);
+  if(sim.x>-8&&sim.x<6&&sim.z>-6&&sim.z<-2.4){assert.ok(sim.y>3.3,`checkout clearance: ${sim.x}, ${sim.y}, ${sim.z}`);crossed=true;}
+  if(sim.z> -1.7 && sim.y<1.1 && sim.state==='Buying groceries')arrived=true;
+ }
+ assert.ok(crossed);assert.ok(arrived);
+});
 test('Buzz visits last 5-17 minutes, start with one friend and survive reload',()=>{
  const sim=new Simulation();sim.life.autonomous=false;
  assert.equal(callBuzz(sim),true);assert.equal(sim.life.social.visitors,1);

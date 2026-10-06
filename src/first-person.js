@@ -10,9 +10,10 @@ export class FirstPerson {
   constructor(habitat, { selectFruit, place, cancelPlacement, inviteFly }) {
     this.habitat = habitat; this.keys = new Set(); this.active = false; this.cancelPlacement = cancelPlacement;
     this.stick = { x: 0, y: 0 }; this.touchRun = false;
-    const panel = document.createElement('div'); panel.className = 'first-person-entry'; panel.hidden = true;
-    panel.innerHTML = '<button id="first-person-btn" aria-pressed="false">See through your eyes <span>↗</span></button><p>Step into the familiar presence. Look around, float beside FlyGuy, and leave a little fruit.</p>';
-    document.querySelector('.neural-panel').append(panel); this.panel = panel; this.button = panel.querySelector('button');
+    const button = document.createElement('button'); button.id = 'first-person-btn'; button.type = 'button'; button.hidden = true;
+    button.textContent = 'Join World'; button.setAttribute('aria-pressed', 'false');
+    button.title = 'Explore the playground in first person and interact with FlyGuy';
+    document.querySelector('#autonomy-btn').after(button); this.button = button;
     this.button.onclick = () => this.active ? this.exit() : this.enter();
     const hud = document.createElement('div'); hud.className = 'first-person-hud'; hud.hidden = true;
     hud.innerHTML = `<div class="first-person-top"><div><strong>YOU / INSIDE HIS WORLD</strong><span class="desktop-look-hint">WASD move · Arrows look · Hold Space to run · Q / E down / up</span><span class="touch-look-hint">Left thumb moves · Right finger looks</span><span id="first-person-presence"></span></div><button id="exit-first-person">Exit first person</button></div>
@@ -111,7 +112,7 @@ export class FirstPerson {
     h.container.classList.remove('first-person'); h.container.dataset.firstPerson = 'false'; this.hud.hidden = true;
     h.container.classList.remove('first-person-training');this.hud.querySelector('#first-person-train').setAttribute('aria-expanded','false');this.hud.querySelector('#first-person-train').textContent='Train FlyGuy';
     document.querySelector('#training-dock').hidden=document.querySelector('#training-toggle').getAttribute('aria-expanded')!=='true';
-    this.button.textContent = 'See through your eyes ↗'; this.button.setAttribute('aria-pressed', 'false');
+    this.button.textContent = 'Join World'; this.button.setAttribute('aria-pressed', 'false');
     h.renderer.domElement.setAttribute('aria-label', 'Interactive 3D habitat. Drag to orbit, scroll to zoom.');
   }
   ahead() {
@@ -149,7 +150,7 @@ export class FirstPerson {
   }
   update(dt, sim) {
     this.sim = sim;
-    const h = this.habitat; this.panel.hidden = h.environment !== 'playground';
+    const h = this.habitat; this.button.hidden = h.environment !== 'playground';
     if (!this.active) return;
     if (h.environment !== 'playground') { this.exit(); return; }
     const slideButton = this.hud.querySelector('#first-person-slide');

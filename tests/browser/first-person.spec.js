@@ -6,6 +6,8 @@ test('enter the familiar presence, fly, look, place fruit, and restore orbit', a
   await expect(page.locator('#first-person-btn')).toBeHidden();
   await page.locator('[data-environment="playground"]').click();
   await expect(page.locator('#first-person-btn')).toBeVisible();
+  await expect(page.locator('.life-location-actions #first-person-btn')).toHaveText('Join World');
+  await page.locator('#viewport').screenshot({path:'test-results/join-world-desktop.png'});
   await page.locator('#first-person-btn').click();
   await expect(page.locator('#viewport')).toHaveAttribute('data-first-person', 'true');
   await expect(page.locator('#first-person-presence')).toContainText('Habitat');
@@ -29,7 +31,13 @@ test('enter the familiar presence, fly, look, place fruit, and restore orbit', a
 
 test('mobile first person has touch movement and fruit placement without horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/');
-  await page.locator('[data-environment="playground"]').click(); await page.locator('#first-person-btn').click();
+  await page.locator('[data-environment="playground"]').click();
+  await page.locator('#viewport').screenshot({path:'test-results/join-world-mobile.png'});
+  await page.setViewportSize({width:320,height:844});
+  const join=await page.locator('#first-person-btn').boundingBox(),training=await page.locator('#playground-controls').boundingBox();
+  expect(join.y+join.height).toBeLessThan(training.y);
+  await page.locator('#viewport').screenshot({path:'test-results/join-world-narrow.png'});
+  await page.locator('#first-person-btn').click();
   await expect(page.locator('#movement-joystick')).toBeVisible();
   await page.locator('[data-fruit="tomato"]').click(); await page.locator('#first-person-drop').click();
   await expect(page.locator('#object-count')).toHaveText('1 object');
