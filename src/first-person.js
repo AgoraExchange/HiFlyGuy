@@ -1,4 +1,4 @@
-import { PARK } from './park-layout.js';
+import { PARK, parkWalkingHeight } from './park-layout.js';
 import * as THREE from 'three';
 import { HUMAN } from './training.js';
 import { withinHabitat } from './simulation.js';
@@ -81,6 +81,7 @@ export class FirstPerson {
   home() {
     this.habitat.endEncounter();
     this.sliding = null;
+    this.walking = true;
     this.releaseStick();
     this.keys.clear(); this.habitat.camera.position.set(HUMAN.x, 2.05, HUMAN.z);
     this.previousEye = this.habitat.camera.position.clone(); this.previousFly = null;
@@ -119,16 +120,19 @@ export class FirstPerson {
     return withinHabitat(p.x, p.z, PARK.objectRadius - .1);
   }
   addressSpot() {
+    if (this.sliding) return null;
     const h = this.habitat, direction = h.camera.getWorldDirection(new THREE.Vector3());
     const point = h.camera.position.clone().addScaledVector(direction, 4.5);
     // Wait for a view with enough room to hover in front of the person.
     if (Math.hypot(point.x, point.z) > PARK.flyRadius - .3 || point.y < 1.6 || point.y > 9) return null;
     return point;
   }
-  startSlide() {
-    const slide = this.habitat.playground?.slides?.[0]; if (!slide || this.sliding) return;
+  nearbySlide() {
     const p = this.habitat.camera.position;
-    if (Math.hypot(p.x-slide.top.x,p.z-slide.top.z)>2.1 || p.y<2.35) return;
+    return this.habitat.playground?.slides?.find(s => Math.hypot(p.x-s.top.x,p.z-s.top.z)<1.6 && Math.abs(p.y-PARK.eyeHeight-s.top.y)<.3);
+  }
+  startSlide() {
+    const slide = this.nearbySlide(); if (!slide || this.sliding) return;
     this.sliding = { slide, elapsed: 0, duration: 3.2 };
     this.keys.clear(); this.releaseStick();
   }
@@ -149,16 +153,20 @@ export class FirstPerson {
     if (!this.active) return;
     if (h.environment !== 'playground') { this.exit(); return; }
     const slideButton = this.hud.querySelector('#first-person-slide');
-    const slide = h.playground?.slides?.[0];
-    const nearSlide = slide && Math.hypot(h.camera.position.x-slide.top.x,h.camera.position.z-slide.top.z)<2.3 && h.camera.position.y>2.25;
+    const nearSlide = this.nearbySlide();
     slideButton.hidden = !nearSlide || !!this.sliding;
+    if (document.hidden || document.querySelector('dialog[open]')) { this.keys.clear(); this.releaseStick(); return; }
     if (this.sliding) {
       this.sliding.elapsed += Math.min(dt,.1);
       const progress=Math.min(1,this.sliding.elapsed/this.sliding.duration), point=this.sliding.slide.path.getPoint(progress), tangent=this.sliding.slide.path.getTangent(progress);
       h.camera.position.set(point.x,point.y+PARK.eyeHeight*.72,point.z);
-      this.yaw=Math.atan2(tangent.x,tangent.z);this.pitch=Math.atan2(tangent.y,Math.hypot(tangent.x,tangent.z));this.look();
+      this.yaw=Math.atan2(-tangent.x,-tangent.z);this.pitch=Math.atan2(tangent.y,Math.hypot(tangent.x,tangent.z));this.look();
       sim.observer={x:h.camera.position.x,y:h.camera.position.y,z:h.camera.position.z,forwardX:-Math.sin(this.yaw),forwardZ:-Math.cos(this.yaw)};
-      if(progress>=1){this.sliding=null;h.camera.position.y=Math.max(PARK.eyeHeight,.95+PARK.eyeHeight);}
+      if(progress>=1){
+        this.sliding=null;this.walking=true;
+        h.camera.position.addScaledVector(new THREE.Vector3(tangent.x,0,tangent.z).normalize(),1.4);
+        h.camera.position.y=PARK.eyeHeight;
+      }
       return;
     }
     const present = sim.environment === 'playground';
@@ -168,6 +176,7 @@ export class FirstPerson {
     if (document.hidden || document.querySelector('dialog[open]')) { this.keys.clear(); this.releaseStick(); return; }
     if (h.encounter?.firstPerson) { this.keys.clear(); this.releaseStick(); return; }
     const k = code => Number(this.keys.has(code));
+    if (k('KeyE') || k('KeyQ')) this.walking=false;
     this.yaw += (k('ArrowLeft') - k('ArrowRight')) * Math.min(dt, .1) * 1.5;
     this.pitch = Math.max(-1.35, Math.min(1.35, this.pitch + (k('ArrowUp') - k('ArrowDown')) * Math.min(dt, .1) * 1.2));
     const direction = new THREE.Vector3(k('KeyD') - k('KeyA') + this.stick.x, k('KeyE') - k('KeyQ'), k('KeyS') - k('KeyW') + this.stick.y);
@@ -176,19 +185,23 @@ export class FirstPerson {
     const p = h.camera.position, radius = Math.hypot(p.x, p.z), bound = PARK.flyRadius;
     if (radius > bound) { p.x *= bound / radius; p.z *= bound / radius; }
     p.y = Math.max(.6, Math.min(9, p.y));
-    for (const stair of h.playground.stairs ?? []) {
-      const along=(p.z-stair.z)/2.9, near=Math.abs(p.x-stair.x)<1.5 && along>=-.15 && along<=1.05;
-      if(near){p.y=Math.max(p.y,Math.min(stair.topY+PARK.eyeHeight,along*stair.topY+PARK.eyeHeight));}
-    }
     // Colliders match tree trunks, benches, planters, equipment and fence posts.
     const distance = this.previousEye ? this.previousEye.distanceTo(p) : 0;
     const steps = Math.max(1, Math.ceil(distance / .18)), target = p.clone();
     if (this.previousEye) p.copy(this.previousEye);
     const movement = target.clone().sub(p).divideScalar(steps);
     for (let step=0;step<steps;step++) {
+      const before = p.clone();
       p.add(movement);
+      const floor = parkWalkingHeight(p.x,p.z);
+      if (this.walking) {
+        if (floor > before.y-PARK.eyeHeight+.4) { p.copy(before); continue; }
+        if (movement.lengthSq()>0 || floor>0) p.y=floor+PARK.eyeHeight;
+      } else if (p.y<=floor+PARK.eyeHeight && before.y>=floor+PARK.eyeHeight) {
+        p.y=floor+PARK.eyeHeight;this.walking=true;
+      }
       for (const obstacle of h.playground.colliders) {
-        if (p.y - 1.5 >= obstacle.height || p.y + .2 <= obstacle.base) continue;
+        if (p.y - PARK.eyeHeight >= obstacle.height-.01 || p.y + .2 <= obstacle.base) continue;
         const dx=p.x-obstacle.x,dz=p.z-obstacle.z,d=Math.hypot(dx,dz),r=obstacle.radius+.32;
         if(d<r){p.x=obstacle.x+(d>.001?dx/d:1)*r;p.z=obstacle.z+(d>.001?dz/d:0)*r;}
       }

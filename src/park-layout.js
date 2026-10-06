@@ -12,7 +12,26 @@ export const PARK_PERCHES = [
   { name: 'Boulder garden', x: -21, z: 16, height: 1.6, radius: 1.65, color: '#acb9bf', kind: 'rock' },
 ];
 export const PARK_TREES = [{ x: 8, z: -22, radius: 3, height: 1.5 }, { x: 19, z: -8, radius: 3.6, height: 2.1 }, { x: 12, z: 12, radius: 3, height: 1.2 }];
-export const PARK_SLIDES = [{ id: 'big-slide', top: { x: -18, y: 3.1, z: -12.65 }, bottom: { x: -13, y: .95, z: -9 }, stairs: { x: -21.1, z: -13.3, topY: 3.1, radius: 1.25 } }];
+export const PARK_SLIDES = PARK_PERCHES.flatMap((p, perchIndex) => {
+  if (!['tower', 'slideTower'].includes(p.kind)) return [];
+  return [{ id: `slide-${perchIndex}`, perchIndex,
+    top: { x: p.x, y: p.height, z: p.z + p.radius },
+    bottom: { x: p.x + 5, y: .08, z: p.z + 6 },
+    stairs: { x: p.x, z: p.z - p.radius - 3.2, length: 3.2, width: 1.7, steps: 8, topY: p.height },
+  }];
+});
+
+// Tread tops and decks share their dimensions with the rendered geometry.
+export function parkWalkingHeight(x, z) {
+  for (const slide of PARK_SLIDES) {
+    const s = slide.stairs, along = z - s.z;
+    if (Math.abs(x - s.x) <= s.width / 2 && along >= 0 && along <= s.length)
+      return Math.min(s.steps, Math.floor(along / (s.length / s.steps)) + 1) * s.topY / s.steps;
+    const p = PARK_PERCHES[slide.perchIndex];
+    if (Math.hypot(x - p.x, z - p.z) <= p.radius + .02) return p.height;
+  }
+  return 0;
+}
 export function parkSurfaceHeight(x, z) {
   const heights = [0];
   for (const p of PARK_PERCHES) if (Math.hypot(x - p.x, z - p.z) <= p.radius) heights.push(p.height);

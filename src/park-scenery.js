@@ -85,13 +85,14 @@ export function buildPark(root, surfaces, halos) {
       disk(p.x,p.z,p.radius,p.height,darkwood);
       cylinder(p.radius,.12,[p.x,p.height-.06,p.z],endgrain,40);
       for(let i=0;i<18;i++) {const a=i/18*Math.PI*2,x=p.x+Math.cos(a)*p.radius,z=p.z+Math.sin(a)*p.radius;
-        if(i>3&&i<8)continue;rod([x,0,z],[x,p.height+1.5,z],.08,timber);
-        const b=(i+1)/18*Math.PI*2;rod([x,p.height+1.3,z],[p.x+Math.cos(b)*p.radius,p.height+1.3,p.z+Math.sin(b)*p.radius],.055,rope);
+        if(Math.abs(Math.cos(a)*p.radius)<1.05)continue;rod([x,0,z],[x,p.height+1.5,z],.08,timber);
+        const b=(i+1)/18*Math.PI*2;
+        if(Math.abs(Math.cos(b)*p.radius)>=1.05)rod([x,p.height+1.3,z],[p.x+Math.cos(b)*p.radius,p.height+1.3,p.z+Math.sin(b)*p.radius],.055,rope);
       }
       // A curved open stainless slide, with two rounded edge rails.
-      const slideDef = PARK_SLIDES.find(s => s.top.x === p.x && s.top.z === p.z + p.radius);
-      const path = new T.CatmullRomCurve3(slideDef ? [v(slideDef.top.x,slideDef.top.y,slideDef.top.z),v(-17.4,2.6,-10.1),v(-15.2,1.4,-8.6),v(slideDef.bottom.x,slideDef.bottom.y,slideDef.bottom.z)] : [v(p.x,p.height+.08,p.z+p.radius),v(p.x+.6,p.height-.5,p.z+4),v(p.x+3,.3,p.z+6),v(p.x+5,.22,p.z+6)]);
-      if (slideDef) slides.push({ ...slideDef, path });
+      const slideDef = PARK_SLIDES.find(s => s.perchIndex === index);
+      const path = new T.CatmullRomCurve3([v(p.x,p.height,p.z+p.radius),v(p.x+.6,p.height-.5,p.z+4),v(p.x+3,.3,p.z+6),v(p.x+4,.08,p.z+6),v(slideDef.bottom.x,slideDef.bottom.y,slideDef.bottom.z)]);
+      slides.push({ ...slideDef, path });
       const positions=[],normals=[],uvs=[],indices=[];
       for(let j=0;j<=48;j++) {const center=path.getPoint(j/48), tangent=path.getTangent(j/48), side=v(-tangent.z,0,tangent.x).normalize();
         for(let k=0;k<=12;k++) {const a=-Math.PI/2+k/12*Math.PI,point=center.clone().addScaledVector(side,Math.sin(a)*.85);point.y+=.75*(1-Math.cos(a));positions.push(...point.toArray());normals.push(0,1,0);uvs.push(k/12,j/48);if(j<48&&k<12){const n=j*13+k;indices.push(n,n+13,n+1,n+1,n+13,n+14);}}
@@ -99,12 +100,13 @@ export function buildPark(root, surfaces, halos) {
       const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));geometry.setAttribute('normal',new T.Float32BufferAttribute(normals,3));geometry.setAttribute('uv',new T.Float32BufferAttribute(uvs,2));geometry.setIndex(indices);geometry.computeVertexNormals();
       const slide=mesh(geometry,slideMetal,[0,0,0]);slide.material.side=T.DoubleSide;
       for(const sign of [-1,1]) {const points=[];for(let j=0;j<=24;j++){const c=path.getPoint(j/24),t=path.getTangent(j/24);c.addScaledVector(v(-t.z,0,t.x).normalize(),sign*.85);c.y+=.75;points.push(c.toArray());}curveTube(points,.055,slideMetal);}
-      for(let i=0;i<8;i++){const z=p.z-p.radius-2.4+i*.3,y=i*p.height/8;box([1.7,.16,.34],[p.x,y+.08,z],timber);}
-      if (slideDef) {
-        const st = slideDef.stairs; stairs.push(st);
-        for (let i=0;i<10;i++) { const y=st.topY*i/10, z=st.z + i*.32; box([2.2,.16,.48],[st.x,y+.08,z],endgrain); }
-        for (const side of [-1,1]) { rod([st.x+side*1.02,0,st.z-.25],[st.x+side*1.02,st.topY,st.z+2.8],.06,iron); }
+      const st = slideDef.stairs; stairs.push(st);
+      const depth = st.length / st.steps;
+      for (let i=0;i<st.steps;i++) {
+        const height=(i+1)*st.topY/st.steps;
+        box([st.width,height,depth],[st.x,height/2,st.z+(i+.5)*depth],timber);
       }
+      for (const side of [-1,1]) rod([st.x+side*.92,.9,st.z],[st.x+side*.92,st.topY+.9,st.z+st.length],.055,iron);
     } else if (p.kind === 'table') {
       box([4,.2,2.5],[p.x,p.height-.1,p.z],timber);
       for(const side of [-1,1]) {box([4.4,.16,.6],[p.x,.72,p.z+side*1.7],endgrain);rod([p.x-1.4,0,p.z+side*1.5],[p.x-1.4,p.height,p.z],.12,darkwood);rod([p.x+1.4,0,p.z+side*1.5],[p.x+1.4,p.height,p.z],.12,darkwood);}
@@ -160,7 +162,7 @@ export function buildPark(root, surfaces, halos) {
   for(const {material,geometries} of batches.values()){const merged=mergeGeometries(geometries);if(!merged)continue;const m=new T.Mesh(merged,material);m.castShadow=m.receiveShadow=true;g.add(m);geometries.forEach(geo=>geo.dispose());}
   for (const s of slides) {
     // The slide surface and its supports are solid to a walking human.
-    for (let i=1;i<10;i++) { const p=s.path.getPoint(i/10); colliders.push({ x:p.x, z:p.z, radius:.72, height:Math.max(.8,p.y+1), base:0, kind:'slide' }); }
+    for (let i=0;i<=48;i++) { const p=s.path.getPoint(i/48); colliders.push({ x:p.x, z:p.z, radius:.9, height:p.y+.82, base:0, kind:'slide', slideId:s.id }); }
   }
   return { colliders, swings, slides, stairs };
 }
