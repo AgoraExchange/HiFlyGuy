@@ -20,7 +20,7 @@ test('Splash leads to visitor entry, fruit stays in Habitat and keyboard tools s
 });
 test('Free members confirm their username before Square; verified grants unlock and expiry re-locks',async({page})=>{
   await fixtures(page,free);await page.goto('/');await expect(page.locator('#world-splash')).toBeHidden({timeout:6000});
-  await expect(page.locator('#header-tier')).toHaveText('Free Tier');await page.locator('.swatter-launch').click();
+  await expect(page.locator('#header-tier')).toHaveText('Free Tier');await page.locator('[data-category="Tools"]').click();await page.locator('.hotbar-slot[data-tool="swatter"]').click();
   await expect(page.locator('#upgrade-dialog')).toBeVisible();await page.locator('[data-plan="god"]').click();
   await page.locator('#upgrade-username').fill('someone_else');await page.locator('#prepare-checkout').click();
   await expect(page.locator('#upgrade-status')).toContainText('signed-in account');await expect(page.locator('#square-checkout')).toBeHidden();
@@ -30,7 +30,7 @@ test('Free members confirm their username before Square; verified grants unlock 
   await page.locator('#upgrade-dialog [data-member-close]').click();
   await page.evaluate(()=>window.testMembership.set({verified:true,entitlement:{tier:'god',expiresAt:Date.now()+3600000}}));
   await expect(page.locator('#header-tier')).toHaveText('Da God');await expect(page.locator('#director-btn')).toBeHidden();
-  await page.locator('.swatter-launch').click();await expect(page.locator('#swatter-banner')).toBeVisible();
+  await page.locator('[data-category="Tools"]').click();await page.locator('.hotbar-slot[data-tool="swatter"]').click();await expect(page.locator('#swatter-banner')).toBeVisible();
   await page.evaluate(()=>window.testMembership.set({entitlement:{tier:'god',expiresAt:Date.now()-1}}));
   await expect(page.locator('#header-tier')).toHaveText('Free Tier');await expect(page.locator('#swatter-banner')).toBeHidden();await expect(page.locator('#director-btn')).toBeHidden();
 });

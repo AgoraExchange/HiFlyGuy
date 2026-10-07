@@ -1,7 +1,9 @@
+import { NEW_ITEMS } from './world-items.js';
+import { createWorldItem, animateWorldItem } from './object-models.js';
 import { LifeScenes, addLifeProps, animateLifeProps } from './life-scenes.js';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { seededRandom, WORLD, roomBounds } from './simulation.js';
+import { seededRandom, WORLD, roomBounds, STIMULI } from './simulation.js';
 import { ComputerRoom } from './computer-room.js';
 import { Playground } from './playground.js';
 import { approachViewer } from './presence.js';
@@ -84,9 +86,10 @@ export function createFly() {
 
 const legAxis = vec(0, 1, 0);
 export function animateFly(fly, sim) {
-  const grounded = Math.max(0, Math.min(1, (1.12 - (sim.y - (sim.groundHeight?.() ?? 0))) / 0.25));
+  const support=sim.state==='Feeding'&&sim.target?.kind==='sugar'?.7*(.6+sim.target.amount*.4):sim.state==='Lounging on the couch'?.76:0;
+  const grounded = Math.max(0, Math.min(1, (1.12 - (sim.y - (sim.groundHeight?.() ?? 0) - support)) / 0.25));
   const typing = ['Locked in', 'Working'].includes(sim.state);
-  const feeding = sim.state === 'Feeding', grooming = ['Grooming', 'Making the bed'].includes(sim.state), holding = ['Smoking', 'Having a drink'].includes(sim.state);
+  const feeding = sim.state === 'Feeding', grooming = ['Grooming', 'Making the bed', 'Drinking water', 'Admiring himself', 'Shooting hoops'].includes(sim.state), holding = ['Smoking', 'Having a drink'].includes(sim.state);
   const active = grounded * (feeding || grooming || holding || typing ? 1 : 0), t = sim.time;
   fly.group.rotation.z = sim.speed ? Math.sin(t * 1.5) * .025 : 0;
   fly.group.rotation.x = feeding ? grounded * (0.035 + Math.sin(t * 5) * 0.012) : 0;
@@ -94,10 +97,12 @@ export function animateFly(fly, sim) {
     const progress = Math.max(0, Math.min(1, (t - sim.training.active.phaseAt) / 1.8));
     fly.group.rotation.x = sim.state === 'Backflipping' ? -Math.PI * 2 * (progress * progress * (3 - 2 * progress)) : -Math.sin(progress * Math.PI) * (1.1 + sim.training.flip * 2);
   }
+  if(sim.state==='Dancing'){fly.group.rotation.z=Math.sin(t*7)*.18;fly.group.rotation.x=Math.sin(t*3.5)*.1;}
+  if(['Lounging on the couch','Hiding in his box'].includes(sim.state)){fly.group.rotation.z=.22;fly.group.rotation.x=-.12;}
   if (sim.state === 'Sleeping') { fly.group.rotation.x = -.13; fly.group.rotation.z = .32; }
   else if (sim.life) { fly.group.rotation.z += sim.life.buzz * Math.sin(t * 1.7) * .18; if (!sim.speed) fly.group.rotation.x += (1 - sim.life.motivation) * .12; }
   if (fly.lifeProps) animateLifeProps(fly, sim);
-  fly.wings.forEach((w, i) => { w.scale.x = sim.state === 'Crossing doorway' || sim.environment === 'rooftop' && sim.x < -2 && sim.z < 6.7 ? .4 : 1; w.rotation.y = sim.state === 'Sleeping' ? (i ? 1 : -1) * .25 : 0; w.rotation.z = (i ? 1 : -1) * (sim.speed ? 0.12 + Math.sin(t * 63) * 0.35 : 0.04); });
+  fly.wings.forEach((w, i) => { w.scale.x = ['Hiding in his box','Lounging on the couch'].includes(sim.state) ? .45 : sim.state === 'Crossing doorway' || sim.environment === 'rooftop' && sim.x < -2 && sim.z < 6.7 ? .4 : 1; w.rotation.y = sim.state === 'Sleeping' ? (i ? 1 : -1) * .25 : 0; w.rotation.z = (i ? 1 : -1) * (sim.speed ? 0.12 + Math.sin(t * 63) * 0.35 : 0.04); });
   fly.legs.forEach((leg, i) => { leg.rotation.x = sim.state === 'Sleeping' ? -.6 : sim.speed ? 0.3 + Math.sin(t * 7 + i) * 0.15 : 0; });
   for (const leg of fly.forelegs) {
     const side = leg.side, rub = Math.sin(t * (feeding ? 11 : 8) + (side > 0 ? Math.PI : 0));
@@ -122,6 +127,7 @@ export function animateFly(fly, sim) {
 }
 
 export function createObject(kind) {
+  if(NEW_ITEMS[kind])return createWorldItem(kind);
   const g = new THREE.Group();
   if (kind === 'banana') {
     const curve = [[-0.65, 0.13, 0], [-0.3, 0.18, 0], [0.12, 0.34, 0], [0.45, 0.7, 0]];
@@ -324,13 +330,13 @@ export class Habitat {
     if (this.environment === 'playground') { this.playground.update(sim); }
     if (this.follow && present && !this.encounter) { const delta = this.fly.group.position.clone().sub(p); this.camera.position.add(delta); this.controls.target.copy(this.fly.group.position); }
     if (present && running && sim.time - this.lastTrail > 0.15) { this.lastTrail = sim.time; this.trailPoints.push(vec(sim.x, 0.025, sim.z)); if (this.trailPoints.length > 200) this.trailPoints.shift(); this.trail.geometry.dispose(); this.trail.geometry = new THREE.BufferGeometry().setFromPoints(this.trailPoints); }
-    for (const [id, g] of this.objects) if (!sim.objects.some(o => o.id === id)) { this.scene.remove(g); g.traverse(c => { c.geometry?.dispose(); if (c.material) c.material.dispose(); }); this.objects.delete(id); }
+    for (const [id, g] of this.objects) if (!sim.objects.some(o => o.id === id)) { g.userData.reflector?.dispose(); this.scene.remove(g); g.traverse(c => { c.geometry?.dispose(); if (c.material) {c.material.map?.dispose();c.material.dispose();} }); this.objects.delete(id); }
     for (const o of sim.objects) {
       if (!this.objects.has(o.id)) {
         const g = createObject(o.kind); g.position.set(o.x, 0, o.z); g.traverse(c => { if (c.isMesh) c.userData.objectId = o.id; }); this.scene.add(g); this.objects.set(o.id, g);
         const scent = new THREE.Mesh(new THREE.SphereGeometry(2.4, 20, 12), new THREE.MeshBasicMaterial({ color: o.kind === 'peppermint' ? '#8fc8b7' : '#d7c96c', transparent: true, opacity: 0.045, depthWrite: false, wireframe: true })); scent.name = 'scent'; scent.scale.y = 0.28; g.add(scent);
       }
-      const g = this.objects.get(o.id); g.visible = (o.room ?? sim.environment) === this.environment; g.position.y = sim.groundHeight(o.x, o.z, o.room ?? sim.environment); g.scale.setScalar(0.6 + o.amount * 0.4); g.getObjectByName('scent').visible = this.showScent;
+      const g = this.objects.get(o.id); g.visible = (o.room ?? sim.environment) === this.environment; g.position.y = sim.groundHeight(o.x, o.z, o.room ?? sim.environment); g.scale.setScalar(0.6 + o.amount * 0.4); g.getObjectByName('scent').visible = this.showScent && STIMULI[o.kind].scent !== 0; animateWorldItem(g,o,sim);
     }
     const selected = sim.roomObjects(this.environment).find(o => o.id === this.selectedId);
     this.selection.visible = !!selected; if (selected) this.selection.position.set(selected.x, sim.groundHeight(selected.x, selected.z, this.environment) + 0.04, selected.z);

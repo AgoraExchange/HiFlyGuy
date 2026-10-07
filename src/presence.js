@@ -36,7 +36,7 @@ export function approachViewer(origin, destination, eye, progress) {
 
 export function noticeViewer(sim, dt) {
   const eye = sim.observer;
-  if (!eye || sim.environment !== 'playground' || sim.speed > .1 || !['Grooming', 'Resting', 'Perching', 'Exploring'].includes(sim.state)) return;
+  if (!eye || (eye.room??'playground') !== sim.environment || sim.speed > .1 || !['Grooming', 'Resting', 'Perching', 'Exploring'].includes(sim.state)) return;
   if (Math.hypot(eye.x - sim.x, eye.y - sim.y, eye.z - sim.z) > 7) return;
   const heading = Math.atan2(eye.x - sim.x, eye.z - sim.z);
   sim.heading += Math.atan2(Math.sin(heading - sim.heading), Math.cos(heading - sim.heading)) * Math.min(1, dt * 2.5);

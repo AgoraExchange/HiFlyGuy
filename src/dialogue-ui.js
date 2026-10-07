@@ -4,14 +4,22 @@ import { ROOMS } from './life.js';
 const KEY = 'flyguy-dialogue-v1';
 export function setupDialogue({ getStorage, getHabitat }) {
   const voice = new FlyDialogue();
-  document.querySelector('.playback').insertAdjacentHTML('afterend', `
+  const transcript=document.createElement('dialog');transcript.id='dialogue-dialog';transcript.setAttribute('aria-labelledby','dialogue-title');
+  transcript.innerHTML = `
+    <div class="transcript-top"><span class="eyebrow">HIS WORDS, IN HIS OWN TIME</span><button id="close-transcript" aria-label="Close FlyGuy's words">&times;</button></div>
     <section class="dialogue-panel" aria-labelledby="dialogue-title">
       <header><div><span class="eyebrow">OVERHEARD IN HIS LITTLE WORLD</span><h2 id="dialogue-title">FlyGuy, unfiltered.</h2></div><button id="download-dialogue" class="text-button">Save transcript</button></header>
       <p class="dialogue-intro">Little thoughts, big feelings, and the occasional word to you.</p>
       <div class="dialogue-options"><label><input type="checkbox" id="speech-enabled" checked> Speech bubbles</label><label><input type="checkbox" id="encounters-enabled" checked> Camera visits</label></div>
       <div id="dialogue-log" class="dialogue-log" role="log" aria-label="FlyGuy dialogue with timestamps" aria-live="polite" aria-relevant="additions" tabindex="0"></div>
       <p id="dialogue-storage" class="dialogue-storage"></p>
-    </section>`);
+    </section>`;
+  document.body.append(transcript);
+  const tab=document.createElement('button');tab.id='transcript-tab';tab.className='tab';tab.type='button';tab.textContent='FlyGuy says';tab.setAttribute('aria-haspopup','dialog');tab.setAttribute('aria-controls','dialogue-dialog');
+  document.querySelector('.workspace-heading .tabs').append(tab);
+  tab.onclick=()=>{transcript.showModal();const log=transcript.querySelector('#dialogue-log');log.scrollTop=log.scrollHeight;};
+  transcript.querySelector('#close-transcript').onclick=()=>transcript.close();
+  transcript.addEventListener('click',e=>{if(e.target!==transcript)return;const r=transcript.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)transcript.close();});
   const viewport = document.querySelector('#viewport');
   viewport.insertAdjacentHTML('beforeend', '<div id="fly-speech" class="fly-speech" hidden><span></span><p></p></div><button id="end-encounter" class="end-encounter" hidden>Back to his world <span aria-hidden="true">↗</span></button>');
   const bubble = document.querySelector('#fly-speech'), log = document.querySelector('#dialogue-log');

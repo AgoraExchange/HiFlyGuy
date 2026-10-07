@@ -3,7 +3,7 @@ import { test, expect } from './member-fixture.js';
 test('enter the familiar presence, fly, look, place fruit, and restore orbit', async ({ page }) => {
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/'); await page.locator('#pause-btn').click();
-  await expect(page.locator('#first-person-btn')).toBeHidden();
+  await expect(page.locator('#first-person-btn')).toBeVisible();
   await page.locator('[data-environment="playground"]').click();
   await expect(page.locator('#first-person-btn')).toBeVisible();
   await expect(page.locator('.life-location-actions #first-person-btn')).toHaveText('Join World');
@@ -25,7 +25,7 @@ test('enter the familiar presence, fly, look, place fruit, and restore orbit', a
   await page.screenshot({ path: 'test-results/first-person-desktop.png' });
   await page.keyboard.press('Escape'); await expect(page.locator('#first-person-btn')).toHaveAttribute('aria-pressed', 'false');
   await page.locator('#first-person-btn').click(); await page.locator('#exit-first-person').click();
-  await page.locator('[data-environment="habitat"]').click(); await expect(page.locator('#first-person-btn')).toBeHidden();
+  await page.locator('[data-environment="habitat"]').click(); await expect(page.locator('#first-person-btn')).toBeVisible();
   expect(errors).toEqual([]);
 });
 

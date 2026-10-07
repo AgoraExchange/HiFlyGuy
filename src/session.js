@@ -2,10 +2,11 @@ import { NEURAL_UNITS } from './simulation.js';
 import { decodeLife, isRoom, LIFE_STATES } from './life.js';
 import { Simulation, STIMULI, roomBounds, seededRandom } from './simulation.js';
 import { decodeTraining, TRAINING_STATES } from './training.js';
+import { ITEM_STATES, RADIO_STATIONS, itemOptions, decodeBelongings } from './world-items.js';
 
 export const SESSION_KEY = 'hiflyguy.world.v1';
 const scalars = ['time', 'x', 'z', 'y', 'heading', 'energy', 'hunger', 'speed', 'startle', 'nextId', 'nextMemoryId', 'caution', 'waypointUntil', 'lastMemoryLog', 'nextGroomAt', 'groomingUntil', 'distress', 'escapeX', 'escapeZ'];
-const states = ['Locked in', 'Exploring', 'Seeking food', 'Feeding', 'Avoiding', 'Resting', 'Cautious', 'Grooming', 'Panicking', 'Approaching screen', 'Watching screen', 'Perching', 'Finding a perch', ...TRAINING_STATES, ...LIFE_STATES];
+const states = ['Locked in', 'Exploring', 'Seeking food', 'Feeding', 'Avoiding', 'Resting', 'Cautious', 'Grooming', 'Panicking', 'Approaching screen', 'Watching screen', 'Perching', 'Finding a perch', ...TRAINING_STATES, ...LIFE_STATES, ...ITEM_STATES];
 const finite = n => typeof n === 'number' && Number.isFinite(n);
 const between = (n, min, max) => finite(n) && n >= min && n <= max;
 const unit = n => between(n, 0, 1 + 1e-7);
@@ -20,7 +21,7 @@ export function encodeSession(sim, { paused = false, speed = 1, viewRoom = sim.e
       state: sim.state, appetite: sim.appetite, randomState: sim.random.getState(), environment: sim.environment, watchScreen: sim.watchScreen,
       signals: sim.signals, activity: Array.from(sim.activity), waypoint: sim.waypoint,
       targetId: sim.target?.id ?? null, objects: sim.objects, memories: sim.memories, events: sim.events,
-      training: sim.training, life: sim.life,
+      training: sim.training, life: sim.life, belongings: sim.belongings,
     },
   });
 }
@@ -46,7 +47,9 @@ export function decodeSession(raw) {
     if (!Number.isInteger(w.randomState) || !between(w.randomState, 0, 4294967295) || !point(w.waypoint, roomBounds(w.environment).flyRadius)) return null;
     if (!w.signals || !['scent', 'aversion', 'motor', 'reward'].every(key => unit(w.signals[key]))) return null;
     if (!Array.isArray(w.activity) || ![192,NEURAL_UNITS].includes(w.activity.length) || !w.activity.every(unit)) return null;
-    if (!Array.isArray(w.objects) || w.objects.length > 48 || !w.objects.every(o => o && id(o.id) && Object.hasOwn(STIMULI, o.kind) && point(o, roomBounds(o.room ?? w.environment).objectRadius) && unit(o.amount) && (o.room === undefined || isRoom(o.room)))) return null;
+    if (!Array.isArray(w.objects) || w.objects.length > 56 || !w.objects.every(o => o && id(o.id) && Object.hasOwn(STIMULI, o.kind) && point(o, roomBounds(o.room ?? w.environment).objectRadius) && unit(o.amount) && (o.room === undefined || isRoom(o.room)))) return null;
+    if(w.objects.some(o=>o.text!==undefined&&(o.kind!=='note'||typeof o.text!=='string'||o.text.length>120)||o.station!==undefined&&(o.kind!=='radio'||!RADIO_STATIONS.includes(o.station))))return null;
+    const belongings=decodeBelongings(w.belongings,w.objects,w.time);if(!belongings)return null;
     if (w.objects.some(o => w.objects.filter(p => (p.room ?? w.environment) === (o.room ?? w.environment)).length > 8)) return null;
     if (new Set(w.objects.map(o => o.id)).size !== w.objects.length || w.objects.some(o => o.id >= w.nextId)) return null;
     if (!Array.isArray(w.memories) || w.memories.length > 32 || !w.memories.every(m => m && id(m.id) && point(m, roomBounds(m.room ?? w.environment).objectRadius) && unit(m.strength) && Number.isSafeInteger(m.encounters) && m.encounters >= 0 && finite(m.lastEncounter) && finite(m.lastSeen) && (m.room === undefined || isRoom(m.room)))) return null;
@@ -57,10 +60,10 @@ export function decodeSession(raw) {
     for (const key of scalars) sim[key] = w[key];
     sim.state = w.state; sim.appetite = w.appetite; sim.random = seededRandom(w.randomState);
     sim.environment = w.environment; sim.watchScreen = w.watchScreen;
-    sim.training = training; sim.life = life;
+    sim.training = training; sim.life = life; sim.belongings = belongings;
     sim.signals = Object.fromEntries(['scent', 'aversion', 'motor', 'reward'].map(key => [key, w.signals[key]]));
     sim.activity.set(w.activity.length===NEURAL_UNITS?w.activity:Array.from({length:NEURAL_UNITS},(_,i)=>w.activity[Math.floor(i/(NEURAL_UNITS/192))])); sim.waypoint = { x: w.waypoint.x, z: w.waypoint.z };
-    sim.objects = w.objects.map(({ id, kind, x, z, amount, room = w.environment }) => ({ id, kind, x, z, amount, room }));
+    sim.objects = w.objects.map(o => ({ id:o.id,kind:o.kind,x:o.x,z:o.z,amount:o.amount,room:o.room??w.environment,...itemOptions(o.kind,o) }));
     sim.memories = w.memories.map(({ id, x, z, strength, encounters, lastEncounter, lastSeen, room = w.environment }) => ({ id, x, z, strength, encounters, lastEncounter, lastSeen, room }));
     sim.events = w.events.map(({ time, message, type }) => ({ time, message, type }));
     sim.target = sim.objects.find(o => o.id === w.targetId) ?? null;

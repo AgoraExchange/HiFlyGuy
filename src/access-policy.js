@@ -17,6 +17,7 @@ export function membershipTier(state,now=Date.now()){
 export function canAccess(state,action,room='habitat',now=Date.now()){
   const tier=membershipTier(state,now),paid=tier==='flyest'||tier==='god';
   if(['observe','brain','camera'].includes(action))return true;
+  if(action==='join-world'&&room==='playground')return true;
   if(action==='director')return !!(state?.user&&state.creator===true);
   if(action==='food')return paid||!!(state?.user&&state.creator===true)||room==='habitat';
   return paid||!!(state?.user&&state?.creator);

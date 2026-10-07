@@ -16,7 +16,7 @@ test('FlyGuy renders, responds to experiments, pauses and resets', async ({ page
   await page.getByRole('button', { name: 'Follow FlyGuy up close', exact: true }).click(); await expect(page.locator('#focus-btn')).toHaveAttribute('aria-pressed', 'true');
   await page.waitForTimeout(1200); await page.screenshot({ path: 'test-results/flyguy-closeup.png', fullPage: true });
   await page.getByRole('button', { name: 'Show scent fields', exact: true }).click(); await expect(page.locator('#scent-btn')).toHaveAttribute('aria-pressed', 'true');
-  await page.getByRole('button', { name: 'Place peppermint candy', exact: true }).click(); await page.getByRole('button', { name: 'Place near FlyGuy' }).click();
+  await page.locator('[data-category="Tools"]').click(); await page.getByRole('button', { name: 'Place peppermint candy', exact: true }).click(); await page.getByRole('button', { name: 'Place near FlyGuy' }).click();
   await expect(page.locator('#behavior-pill')).toHaveText('Avoiding', { timeout: 10000 });
   await page.getByRole('button', { name: 'Clear objects', exact: true }).click(); await expect(page.locator('#object-count')).toHaveText('0 objects');
   await page.getByRole('button', { name: 'Reset world', exact: true }).click(); await expect(page.locator('#focus-btn')).toHaveAttribute('aria-pressed', 'false');
@@ -28,13 +28,13 @@ test('FlyGuy renders, responds to experiments, pauses and resets', async ({ page
   expect(errors).toEqual([]);
 });
 
-test('Fullscreen inventory has six slots and placed objects can be selected and removed', async ({ page }) => {
+test('Fullscreen inventory has quick slots and a full catalog and placed objects can be selected and removed', async ({ page }) => {
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/'); await page.getByRole('button', { name: 'Pause virtual world', exact: true }).click();
   await expect(page.locator('#inventory')).toBeHidden();
   await page.getByRole('button', { name: 'Fullscreen habitat', exact: true }).click();
-  await expect(page.locator('#inventory')).toBeVisible(); await expect(page.locator('.inventory-slot')).toHaveCount(6);
-  await expect(page.locator('.inventory-slot.empty')).toHaveCount(2);
+  await expect(page.locator('#inventory')).toBeVisible(); await expect(page.locator('.inventory-slot')).toHaveCount(7);
+  await expect(page.locator('.inventory-slot.empty')).toHaveCount(0);
   await page.keyboard.press('2'); await expect(page.getByRole('button', { name: 'Inventory: fresh tomato' })).toHaveAttribute('aria-pressed', 'true');
   const canvas = page.locator('#viewport > canvas'); const rect = await canvas.boundingBox();
   const position = { x: rect.width * 0.5, y: rect.height * 0.61 };
@@ -108,7 +108,7 @@ test('Reloading preserves feeding, objects, memories, and an explicit reset', as
   await page.getByRole('button', { name: 'Resume virtual world', exact: true }).click();
   await expect(page.locator('#behavior-pill')).toHaveText(/Exploring|Grooming/, { timeout: 25000 });
   await expect(page.locator('#object-count')).toHaveText('1 object');
-  await page.getByRole('button', { name: 'Place peppermint candy', exact: true }).click(); await page.getByRole('button', { name: 'Place near FlyGuy' }).click();
+  await page.locator('[data-category="Tools"]').click(); await page.getByRole('button', { name: 'Place peppermint candy', exact: true }).click(); await page.getByRole('button', { name: 'Place near FlyGuy' }).click();
   await expect(page.locator('#memory-count')).toHaveText('1 place');
   await page.getByRole('button', { name: 'Remove peppermint candy 2', exact: true }).click();
   await page.getByRole('button', { name: 'Pause virtual world', exact: true }).click();

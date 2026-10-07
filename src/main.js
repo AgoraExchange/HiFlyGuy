@@ -1,3 +1,5 @@
+import { NEW_ITEMS, itemAction, isFreeFruit } from './world-items.js';
+import { itemIcon, hotbarHTML, setupHotbar } from './hotbar.js';
 import { FirstPerson } from './first-person.js';
 import './first-person.css';
 import { setupDialogue } from './dialogue-ui.js';
@@ -38,7 +40,7 @@ const icons = {
 };
 const icon = (name, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name] || icons.habitat}</svg>`;
 const swatterArt = '<svg viewBox="0 0 100 75" aria-hidden="true"><g transform="rotate(30 50 35)"><path d="M48 39h4v28h-4z" fill="#b59065"/><rect x="46" y="60" width="8" height="12" rx="3" fill="#70785a"/><rect x="30" y="4" width="40" height="39" rx="8" fill="#b68a5950" stroke="#d8aa78" stroke-width="4"/><path d="M38 7v32m8-32v32m8-32v32m8-32v32M33 14h34M33 23h34M33 32h34" stroke="#c3b68b" stroke-width="1.5"/></g></svg>';
-const foodArt = kind => kind === 'banana' ? '<svg viewBox="0 0 100 75"><path d="M17 21c1 39 44 57 65 18C55 61 35 42 30 20z" fill="#e7c45f"/><path d="M23 24c7 29 30 39 50 21" fill="none" stroke="#aa8337" stroke-width="2"/><path d="m24 24-4-12 8-1 3 13M79 41l6-7" stroke="#84794a" stroke-width="5"/><path d="M33 42c4 6 10 11 17 13" stroke="#ffe6a0" stroke-width="3" fill="none"/></svg>' : kind === 'tomato' ? '<svg viewBox="0 0 100 75"><ellipse cx="50" cy="44" rx="27" ry="24" fill="#ca6350"/><ellipse cx="40" cy="38" rx="11" ry="10" fill="#df8068" opacity=".7"/><path d="m50 27-16-8 13 1 4-12 4 13 14-2-13 9-6-6z" fill="#87915b"/><path d="m51 23 3-14" stroke="#a2a777" stroke-width="4"/></svg>' : '<svg viewBox="0 0 100 75"><path d="m26 28-15-8v31l16-6m48-17 14-8v31l-15-6" fill="#abbcaf" opacity=".6"/><circle cx="50" cy="37" r="24" fill="#e3e3ce"/><g fill="#c87266"><path d="M50 37 41 15a24 24 0 0 1 15-1zM50 37l23-5a24 24 0 0 1-1 15zM50 37l-2 24a24 24 0 0 1-13-5zM50 37 28 29a24 24 0 0 1 8-10zM50 37l15 19a24 24 0 0 1-13 5z"/></g><circle cx="50" cy="37" r="23" fill="none" stroke="#f2eee0" opacity=".5"/></svg>';
+const foodArt = kind => NEW_ITEMS[kind] ? itemIcon(kind) : kind === 'banana' ? '<svg viewBox="0 0 100 75"><path d="M17 21c1 39 44 57 65 18C55 61 35 42 30 20z" fill="#e7c45f"/><path d="M23 24c7 29 30 39 50 21" fill="none" stroke="#aa8337" stroke-width="2"/><path d="m24 24-4-12 8-1 3 13M79 41l6-7" stroke="#84794a" stroke-width="5"/><path d="M33 42c4 6 10 11 17 13" stroke="#ffe6a0" stroke-width="3" fill="none"/></svg>' : kind === 'tomato' ? '<svg viewBox="0 0 100 75"><ellipse cx="50" cy="44" rx="27" ry="24" fill="#ca6350"/><ellipse cx="40" cy="38" rx="11" ry="10" fill="#df8068" opacity=".7"/><path d="m50 27-16-8 13 1 4-12 4 13 14-2-13 9-6-6z" fill="#87915b"/><path d="m51 23 3-14" stroke="#a2a777" stroke-width="4"/></svg>' : '<svg viewBox="0 0 100 75"><path d="m26 28-15-8v31l16-6m48-17 14-8v31l-15-6" fill="#abbcaf" opacity=".6"/><circle cx="50" cy="37" r="24" fill="#e3e3ce"/><g fill="#c87266"><path d="M50 37 41 15a24 24 0 0 1 15-1zM50 37l23-5a24 24 0 0 1-1 15zM50 37l-2 24a24 24 0 0 1-13-5zM50 37 28 29a24 24 0 0 1 8-10zM50 37l15 19a24 24 0 0 1-13 5z"/></g><circle cx="50" cy="37" r="23" fill="none" stroke="#f2eee0" opacity=".5"/></svg>';
 document.querySelector('#app').innerHTML = `
 <aside class="rail"><a class="brand-mark" href="./" aria-label="HiFlyGuy home">${icon('fly')}</a><div class="rail-links"><button class="rail-link selected" data-view="habitat" aria-label="Habitat" title="Habitat">${icon('habitat')}</button><button class="rail-link" data-open="science" aria-label="Brain and data" title="Brain and data">${icon('brain')}</button><button class="rail-link" data-open="log" aria-label="Experiment log" title="Experiment log">${icon('log')}</button></div><button class="rail-link rail-bottom" data-open="help" aria-label="How to interact" title="How to interact">${icon('info')}</button><span class="rail-version">01</span></aside>
 <div class="shell">
@@ -68,11 +70,11 @@ document.querySelector('#app').innerHTML = `
           <div class="memory-hud" id="memory-hud"><i></i><span id="memory-hud-text">Learning as he goes</span></div>
           <div class="inventory" id="inventory" role="group" aria-label="Habitat inventory">
             <div class="inventory-heading"><span>POCKET WORLD / INVENTORY</span><span>1-6 to select · Esc to cancel</span></div>
-            <div class="inventory-slots">${Object.entries(STIMULI).map(([kind, o], i) => `<button class="inventory-slot" data-stimulus="${kind}" aria-label="Inventory: ${o.name.toLowerCase()}" aria-pressed="false" title="${o.name} (${i + 1})"><kbd>${i + 1}</kbd><div class="food-art">${foodArt(kind)}</div><span>${o.name}</span></button>`).join('')}<button class="inventory-slot" data-tool="swatter" aria-label="Inventory: fly swatter" aria-pressed="false" title="Fly Swatter (4)"><kbd>4</kbd><div class="food-art">${swatterArt}</div><span>Fly Swatter</span></button><button class="inventory-slot" id="buzz-phone" aria-label="Call The Buzz"><kbd>5</kbd><div class="food-art">&#128241;</div><span>The Buzz</span></button><button class="inventory-slot" id="work-smoke" aria-label="Give a work cigarette break"><kbd>6</kbd><div class="food-art">&#128684;</div><span>Work break</span></button></div>
+            <div class="inventory-slots">${Object.entries(STIMULI).slice(0,3).map(([kind, o], i) => `<button class="inventory-slot" data-stimulus="${kind}" aria-label="Inventory: ${o.name.toLowerCase()}" aria-pressed="false" title="${o.name} (${i + 1})"><kbd>${i + 1}</kbd><div class="food-art">${foodArt(kind)}</div><span>${o.name}</span></button>`).join('')}<button class="inventory-slot" data-tool="swatter" aria-label="Inventory: fly swatter" aria-pressed="false" title="Fly Swatter (4)"><kbd>4</kbd><div class="food-art">${swatterArt}</div><span>Fly Swatter</span></button><button class="inventory-slot" id="buzz-phone" aria-label="Call The Buzz"><kbd>5</kbd><div class="food-art">&#128241;</div><span>The Buzz</span></button><button class="inventory-slot" id="work-smoke" aria-label="Give a work cigarette break"><kbd>6</kbd><div class="food-art">&#128684;</div><span>Work break</span></button><button class="inventory-slot catalog-launch" id="inventory-catalog" aria-label="Browse all objects">+<span>Objects</span></button></div>
           </div>
         </section>
         <div class="playback"><div class="playback-left"><button class="play-button" id="pause-btn" aria-label="Pause virtual world">${icon('pause')}</button><span id="playback-status">Virtual World Running</span><span class="playback-divider"></span><div class="speed-control" aria-label="Simulation speed"><button data-speed="0.5">½×</button><button data-speed="1" class="active">1×</button><button data-speed="2">2×</button></div></div><div class="playback-actions"><button class="quiet-btn" id="director-btn" aria-pressed="false">${icon('clapper')} Directors mode</button><button class="quiet-btn reset-world" id="reset-btn">${icon('reset')} Reset world</button></div></div>
-        <section class="interaction-section"><div class="section-heading"><div><span class="eyebrow">A LITTLE CURIOSITY GOES A LONG WAY</span><h2>Put something in his world.</h2></div><span class="step-label">SELECT → PLACE → OBSERVE</span></div><div class="stimulus-cards">${Object.entries(STIMULI).map(([kind, o]) => `<button class="stimulus-card" data-stimulus="${kind}" aria-label="Place ${o.name.toLowerCase()}"><div class="food-art ${kind}">${foodArt(kind)}</div><div class="stimulus-copy"><strong>${o.name}</strong><span>${o.description}</span><small><i style="background:${o.color}"></i>${o.response}</small></div><span class="add-circle">${icon('plus')}</span></button>`).join('')}</div><button class="swatter-launch" data-tool="swatter" aria-label="Use fly swatter" aria-pressed="false"><div class="food-art">${swatterArt}</div><span><strong>Fly Swatter</strong><small>A little chase. He always gets away.</small></span><kbd>4</kbd></button><div class="objects-footer"><span><i class="tiny-dot"></i> <span id="object-count">0 objects</span> in this room <span class="muted">/ 8 max</span></span><button class="text-button" id="clear-btn" disabled>Clear objects</button></div><div id="object-list" class="object-list"></div></section>
+        <section class="interaction-section"><div class="section-heading"><div><span class="eyebrow">A LITTLE CURIOSITY GOES A LONG WAY</span><h2>Put something in his world.</h2></div><span class="step-label">SELECT → PLACE → OBSERVE</span></div>${hotbarHTML(STIMULI,foodArt,swatterArt)}<div class="objects-footer"><span><i class="tiny-dot"></i> <span id="object-count">0 objects</span> in this room <span class="muted">/ 8 max</span></span><button class="text-button" id="clear-btn" disabled>Clear objects</button></div><div id="object-list" class="object-list"></div></section>
       </div>
       <aside class="telemetry">
         <section class="neural-panel"><div class="panel-heading"><h2>${icon('brain')} A window into his world</h2><i class="status-dot"></i></div><div class="neural-subhead"><span>NEURAL ACTIVITY</span><button id="reset-brain-btn" class="outlined-tag" type="button" title="Reset neural map: show the entire map">BRAIN MODEL</button></div><div id="brain-view" class="brain-view"><span class="brain-axis">DRAG TO ROTATE &middot; SCROLL / PINCH TO ZOOM</span></div><div class="brain-legend"><span><i></i> Quiet</span><div></div><span>Active <i></i></span></div><div class="network-stats"><div><strong>768</strong><span>MODEL UNITS</span></div><div><strong>4,608</strong><span>CONNECTIONS</span></div><button data-open="science" aria-label="Explore the brain model">${icon('arrow')}</button></div><p class="data-caption">Fruit-fly-inspired brain model</p></section>
@@ -129,9 +131,11 @@ function removeObject(id) {
   renderObjects(); toast(object.kind === 'peppermint' && sim.memories.length ? 'Peppermint removed. FlyGuy still remembers what happened here.' : 'Object removed from the habitat.');
   saveWorld();
 }
-function place(x, z) { if (!placing) return; if(!allowed(placing==='peppermint'?'interact':'food',viewRoom)){cancelPlacement();return toast('Visitors can leave fruit in the Habitat. Choose that room first.');} const o = sim.add(placing, x, z, viewRoom); if (o) { toast(`${STIMULI[placing].name} added. Let’s see what happens.`); cancelPlacement(); renderObjects(); saveWorld(); } else { toast('Eight objects is plenty for this little world. Remove one first.'); cancelPlacement(); } }
+function place(x, z) { if (!placing) return; if(!allowed(itemAction(placing),viewRoom)){cancelPlacement();return toast('Visitors can leave fruit in the Habitat. Choose that room first.');} const o = sim.add(placing, x, z, viewRoom, hotbar.options()); if (o) { toast(`${STIMULI[placing].name} added. Let’s see what happens.`); cancelPlacement(); renderObjects(); saveWorld(); } else { toast('Eight objects is plenty for this little world. Remove one first.'); cancelPlacement(); } }
 try { habitat = new Habitat($('#viewport'), place, selectObject, (x, z) => { if (x === null) sim.putAwaySwatter(); else if (allowed('interact') && viewRoom === sim.environment) sim.aimSwatter(x, z); }, index => { if(!allowed('interact'))return; sim.training.selected = index; selectObject(null); saveWorld(); }, ()=>authorize('interact')); brain = new BrainView($('#brain-view')); } catch (error) { console.error(error); $('#render-error').hidden = false; $('#render-error').textContent = 'The 3D view needs WebGL. Enable hardware acceleration in your browser, then reload HiFlyGuy.'; }
-if (habitat) habitat.firstPerson = new FirstPerson(habitat, { selectFruit: selectStimulus, place, cancelPlacement, inviteFly: () => $('#invite-fly').click() });
+const hotbar=setupHotbar(STIMULI,{sim,viewport:$('#viewport'),save:saveWorld,select:selectStimulus});
+$('#inventory-catalog').onclick=()=>hotbar.open();
+if (habitat) habitat.firstPerson = new FirstPerson(habitat, { openCatalog:()=>hotbar.open(), selectFruit: selectStimulus, place, cancelPlacement, inviteFly: () => $('#invite-fly').click(), allowed: room => allowed('join-world',room), authorize: room => authorize('join-world',room) });
 setupTrainingUI(sim, saveWorld, toast, cancelPlacement, ()=>authorize('interact'));
 $('#vitals-note').insertAdjacentHTML('afterend', '<div class="work-life-panel"><strong>HIS EVERYDAY LIFE</strong><p id="work-ledger"></p><p id="buzz-status"></p><div class="life-location-actions"><button id="call-buzz">Call The Buzz</button><button id="paid-early">Paid day off</button><button id="overtime">Extra hours</button></div><small>Virtual World Money. An 8 hour shift takes 2 minutes of real time.</small></div>');
 const socialAction = kind => {
@@ -194,12 +198,12 @@ refreshEnvironment();
 director = setupDirector({ authorize:()=>authorize('director'), allowed:()=>allowed('director'), viewport: $('#viewport'), prepare: () => { habitat?.firstPerson?.exit(); dialogue.cancel(); cancelPlacement(); selectObject(null); $('#dialog').close(); $('#terminal-dialog').close(); saveWorld(); } });
 
 function selectStimulus(kind) {
-  if(kind==='peppermint'&&!authorize('interact'))return;
-  if(kind!=='peppermint'&&!allowed('food',viewRoom)){toast('Leave fruit in the Habitat. FlyGuy can find it when he returns.');viewEnvironment('habitat');}
-  if(!allowed(kind==='peppermint'?'interact':'food',viewRoom))return;
+  if(!isFreeFruit(kind)&&!authorize('interact'))return;
+  if(isFreeFruit(kind)&&!allowed('food',viewRoom)){toast('Leave fruit in the Habitat. FlyGuy can find it when he returns.');viewEnvironment('habitat');}
+  if(!allowed(itemAction(kind),viewRoom))return;
   if (!habitat) return toast('Enable WebGL to place objects in the 3D habitat.');
   if (sim.roomObjects(viewRoom).length >= 8) return toast('Habitat full. Remove an object to make a little room.');
-  cancelPlacement(); selectObject(null); placing = kind;
+  cancelPlacement(); selectObject(null); placing = kind; hotbar.select(kind);
   document.querySelectorAll('[data-stimulus]').forEach(b => { const active = b.dataset.stimulus === kind; b.classList.toggle('selected', active); b.setAttribute('aria-pressed', String(active)); });
   habitat.setPlacement(true); $('#placement-message').textContent = `Click the floor inside the circle to place ${STIMULI[kind].name.toLowerCase()}.`; $('#placement-banner').hidden = false; $('#place-center').textContent = habitat.firstPerson?.active ? 'Place in front of you' : viewRoom === sim.environment ? 'Place near FlyGuy' : 'Place in this room';
 }
@@ -229,7 +233,8 @@ $('#reset-btn').onclick = () => { if(!authorize('interact'))return; dialogue.res
 function renderObjects() {
   const objects = sim.roomObjects(viewRoom);
   $('#object-count').textContent = `${objects.length} object${objects.length === 1 ? '' : 's'}`; $('#clear-btn').disabled = !objects.length;
-  $('#object-list').innerHTML = objects.map(o => `<button class="object-chip" data-remove="${o.id}" aria-label="Remove ${STIMULI[o.kind].name.toLowerCase()} ${o.id}"><i style="background:${STIMULI[o.kind].color}"></i>${STIMULI[o.kind].name} ${icon('close')}</button>`).join('');
+  $('#object-list').innerHTML = objects.map(o => `<span class="object-chip-group"><button class="object-chip" data-remove="${o.id}" aria-label="Remove ${STIMULI[o.kind].name.toLowerCase()} ${o.id}"><i style="background:${STIMULI[o.kind].color}"></i>${STIMULI[o.kind].name} ${icon('close')}</button>${NEW_ITEMS[o.kind]?`<button class="object-inspect" data-inspect="${o.id}" aria-label="Inspect ${STIMULI[o.kind].name.toLowerCase()} ${o.id}">Details</button>`:''}</span>`).join('');
+  document.querySelectorAll('[data-inspect]').forEach(b=>b.onclick=()=>{if(authorize('interact'))hotbar.inspect(+b.dataset.inspect);});
   document.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => removeObject(+b.dataset.remove));
 }
 const escapeHTML = value => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -253,7 +258,7 @@ document.addEventListener('keydown', e => {
   if (director?.busy || access?.busy) return;
   const editing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable;
   if (e.key === 'Escape') { cancelPlacement(); selectObject(null); }
-  if ($('#dialog').open || $('#terminal-dialog').open || editing || e.repeat) return;
+  if (document.querySelector('dialog[open]') || editing || e.repeat) return;
   if (['1', '2', '3', '4'].includes(e.key)) { e.preventDefault(); if (e.key === '4') equipSwatter(); else selectStimulus(Object.keys(STIMULI)[+e.key - 1]); }
   if (e.key === '5' || e.key === '6') { e.preventDefault(); socialAction(e.key === '5' ? 'buzz' : 'smoke'); }
   if (e.key === 'Delete' && selectedId !== null) { e.preventDefault(); removeObject(selectedId); }
@@ -269,6 +274,7 @@ function chart() {
   for (const [key, color] of [['scent', '#dce9a0'], ['aversion', '#80b7a5']]) { ctx.strokeStyle = color; ctx.lineWidth = 1.5 * d; ctx.beginPath(); history.forEach((s, i) => { const x = w - ((sim.time - s.time) / 30) * w, y = h - 7 * d - s[key] * (h - 14 * d); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }); ctx.stroke(); }
 }
 function updateUI() {
+  hotbar.update();
   updateTrainingUI(sim, !allowed('interact') || paused || sim.environment !== 'playground');
   const present = sim.environment === viewRoom, l = sim.life;
   if (lastResidence !== sim.environment) { cancelPlacement(); lastResidence = sim.environment; if (habitat?.follow) { viewRoom = sim.environment; refreshEnvironment(); habitat.frame(true); $('#focus-btn').classList.add('active'); $('#focus-btn').setAttribute('aria-pressed', 'true'); } saveWorld(); }
@@ -342,7 +348,7 @@ function applyMembership(state){
     if(paused)setPaused(false);
   }
   previousAccess=paid;
-  const locked='#call-buzz,#buzz-phone,#work-smoke,#paid-early,#overtime,[data-tool="swatter"],[data-stimulus="peppermint"],#training-toggle,#invite-fly,#autonomy-btn,#adderall-btn,#watch-screen-btn,#terminal-btn,#pause-btn,[data-speed],#reset-btn,#clear-btn';
+  const locked='#call-buzz,#buzz-phone,#work-smoke,#paid-early,#overtime,[data-tool="swatter"],[data-stimulus]:not([data-stimulus="banana"]):not([data-stimulus="tomato"]),#training-toggle,#invite-fly,#autonomy-btn,#adderall-btn,#watch-screen-btn,#terminal-btn,#pause-btn,[data-speed],#reset-btn,#clear-btn';
   document.querySelectorAll(locked).forEach(button=>{button.classList.toggle('access-locked',!paid);button.setAttribute('aria-description',paid?'':'Membership required');});
   $('#director-btn').hidden=!allowed('director');if(!allowed('director'))$('#director-actions-btn').hidden=true;
 }

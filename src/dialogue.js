@@ -1,8 +1,11 @@
+import { ITEM_STATES } from './world-items.js';
+import { ITEM_DIALOGUE } from './item-dialogue.js';
 // Authored character dialogue. Timing uses active real seconds, independent of world speed.
 // Voice: abrasive sci-fi intellect, petty domestic complaints, defensive affection.
 // Let sincerity slip through occasionally; keep jokes specific to his present little life.
 const lines = text => text.trim().split('\n').map(line => line.trim()).filter(Boolean);
 export const DIALOGUE = {
+  ...ITEM_DIALOGUE,
   wandering: lines(`
     Okay, new hypothesis: this room gets dumber every time I cross it.
     Six legs, flight capability, and I'm still walking to the kitchen. Incredible species.
@@ -298,7 +301,9 @@ export const DIALOGUE = {
 export function dialogueContext(sim) {
   if (sim.state === 'Panicking') return 'panic';
   if (['Avoiding', 'Cautious'].includes(sim.state)) return 'cautious';
-  if (sim.state === 'Feeding') return 'feeding';
+  if (sim.state === 'Feeding') return sim.target?.kind==='sugar'?'item_sugar':'feeding';
+  const active=sim.belongings?.active;
+  if(active?.phase==='using'&&ITEM_STATES.includes(sim.state)){const o=sim.objects.find(o=>o.id===active.id&&o.room===sim.environment);if(o&&ITEM_DIALOGUE['item_'+o.kind])return 'item_'+o.kind;}
   if (sim.state === 'Seeking food' || sim.hunger > .78) return 'hungry';
   if (sim.state === 'Working') return 'working';
   if (sim.state === 'Buying groceries') return 'groceries';
@@ -307,7 +312,7 @@ export function dialogueContext(sim) {
   if (sim.life?.stress > .7) return 'worried';
   if (sim.state === 'Grooming') return 'grooming';
   if (sim.life?.social?.visitors > 0) return 'company';
-  if (sim.observer && sim.environment === 'playground' && Math.hypot(sim.observer.x - sim.x, sim.observer.y - sim.y, sim.observer.z - sim.z) < 7) return 'presence';
+  if (sim.observer && (sim.observer.room??'playground') === sim.environment && Math.hypot(sim.observer.x - sim.x, sim.observer.y - sim.y, sim.observer.z - sim.z) < 7) return 'presence';
   return DIALOGUE[sim.environment] ? sim.environment : 'wandering';
 }
 
@@ -334,8 +339,9 @@ export class FlyDialogue {
     if (context !== this.lastContext) { this.lastContext = context; this.next = Math.min(this.next, this.elapsed + 3); }
     if (this.current || this.elapsed < this.next) return null;
     const direct = canAddress && this.elapsed >= this.nextViewer;
-    const pool = direct ? (sim.observer && sim.environment === 'playground' ? 'inPerson' : 'viewer') : this.random() < .72 ? context : ['wandering', 'plans', 'memories'][Math.floor(this.random() * 3)];
-    const text = this.pick(pool), duration = Math.max(6, Math.min(11, text.length / 13));
+    const pool = direct ? (sim.observer && (sim.observer.room??'playground') === sim.environment ? 'inPerson' : 'viewer') : this.random() < .72 ? context : ['wandering', 'plans', 'memories'][Math.floor(this.random() * 3)];
+    const object=sim.objects?.find(o=>o.id===sim.belongings?.active?.id);
+    const text = this.pick(pool).replaceAll('{note}',()=>object?.text??'Glad you are here, little guy.'), duration = Math.max(6, Math.min(11, text.length / 13));
     const entry = { text, kind: direct ? 'To you' : pool === 'memories' ? 'Remembering' : pool === 'plans' || pool === 'heading' ? 'Making plans' : 'Thinking aloud', room: sim.environment, state: sim.state, worldTime: sim.time, at: new Date().toISOString(), direct, duration };
     this.current = { ...entry, until: this.elapsed + duration + (direct ? 4.5 : 0) };
     this.next = this.current.until + 12 + this.random() * 18;

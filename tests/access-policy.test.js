@@ -3,6 +3,16 @@ import assert from 'node:assert/strict';
 import {canAccess,membershipTier,scopedStorage,normalizeUsername,validUsername,usernameIdentity} from '../src/access-policy.js';
 import {Simulation,NEURAL_UNITS,NEURAL_CONNECTIONS} from '../src/simulation.js';
 import {encodeSession,decodeSession} from '../src/session.js';
+
+test('Joining the playground is free; other rooms require current verified membership',()=>{
+ const rooms=['habitat','fireescape','computer','bar','rooftop','store'];
+ const free={user:{uid:'u'},verified:true};
+ for(const state of [{},free,{...free,entitlement:{tier:'flyest',expiresAt:999}},{...free,verified:false,entitlement:{tier:'god',expiresAt:2000}}]){
+  assert.equal(canAccess(state,'join-world','playground',1000),true);
+  for(const room of rooms)assert.equal(canAccess(state,'join-world',room,1000),false);
+ }
+ for(const tier of ['flyest','god'])for(const room of rooms)assert.equal(canAccess({...free,entitlement:{tier,expiresAt:2000}},'join-world',room,1000),true);
+});
 test('Visitor and free accounts can only place food in Habitat; tools require verified access',()=>{
   const free={user:{uid:'u'},verified:true};
   for(const state of [{},free]){assert.equal(canAccess(state,'food','habitat'),true);assert.equal(canAccess(state,'food','computer'),false);assert.equal(canAccess(state,'interact'),false);assert.equal(canAccess(state,'director'),false);assert.equal(canAccess(state,'brain'),true);}

@@ -20,15 +20,17 @@ test('speech is logged, persisted and exported, with pause and bubble controls',
   await page.goto('/');
   await expect(page.locator('.work-life-panel small')).toHaveText('Virtual World Money. An 8 hour shift takes 2 minutes of real time.');
   await cue(page);
+  await expect(page.locator('.dialogue-entry').first()).toBeAttached();
+  await page.locator('#transcript-tab').click();
   await expect(page.locator('.dialogue-entry').first()).toBeVisible();
   await expect(page.locator('.dialogue-entry time').first()).toHaveAttribute('datetime', /T/);
-  await page.locator('#pause-btn').click();
+  await page.locator('#close-transcript').click();await page.locator('#pause-btn').click();await page.locator('#transcript-tab').click();
   const texts = await page.locator('.dialogue-entry p').allTextContents();
   await page.waitForTimeout(400); await expect(page.locator('.dialogue-entry')).toHaveCount(texts.length);
   await page.locator('#speech-enabled').uncheck(); await expect(page.locator('#fly-speech')).toBeHidden();
   const downloadEvent = page.waitForEvent('download'); await page.locator('#download-dialogue').click();
   expect((await downloadEvent).suggestedFilename()).toBe('flyguy-little-moments.txt');
-  await page.reload(); await expect(page.locator('.dialogue-entry p')).toHaveText(texts);
+  await page.reload();await page.locator('#transcript-tab').click(); await expect(page.locator('.dialogue-entry p')).toHaveText(texts);
   await expect(page.locator('#speech-enabled')).not.toBeChecked(); expect(errors).toEqual([]);
 });
 

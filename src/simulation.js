@@ -1,4 +1,5 @@
 import { PARK } from './park-layout.js';
+import { NEW_ITEMS, ITEM_STATES, itemOptions, newBelongings, objectMotion, rememberItem } from './world-items.js';
 import { noticeViewer } from './presence.js';
 import { roofWaypoint } from './room-navigation.js';
 import { newLife, updateLife, lifeMotion, roomHeight, ROOMS, LIFE_STATES } from './life.js';
@@ -9,6 +10,7 @@ export const STIMULI = {
   banana: { name: 'Ripe banana', scent: 1, color: '#e5c76a', description: 'Sweet, fermenting fruit', response: 'Food attraction' },
   tomato: { name: 'Fresh tomato', scent: 0.65, color: '#e08169', description: 'A softer scent to explore', response: 'Gentle attraction' },
   peppermint: { name: 'Peppermint candy', scent: -1, color: '#b9d6cb', description: 'Something a little intense', response: 'Scent avoidance' },
+  ...NEW_ITEMS,
 };
 export function seededRandom(seed = 42) {
   const next = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t ^= t + Math.imul(t ^ t >>> 7, 61 | t); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -36,6 +38,7 @@ export class Simulation {
     this.distress = 0; this.escapeX = 0; this.escapeZ = 0;
     this.environment = 'habitat'; this.watchScreen = false;
     this.training = newTraining(); this.life = newLife();
+    this.belongings = newBelongings();
     this.activity = new Float32Array(NEURAL_UNITS); this.edges = [];
     const neuralRandom=seededRandom(7853);
     // Keep the existing behavior RNG sequence stable while expanding the network.
@@ -50,13 +53,14 @@ export class Simulation {
   groundHeight(x = this.x, z = this.z, room = this.environment) { return Math.max(surfaceHeight(room, x, z), roomHeight(room, x, z)); }
   roomObjects(room = this.environment) { return this.objects.filter(o => (o.room ?? this.environment) === room); }
   roomMemories(room = this.environment) { return this.memories.filter(m => (m.room ?? this.environment) === room); }
-  add(kind, x, z, room = this.environment) {
+  add(kind, x, z, room = this.environment, options = {}) {
     if (!STIMULI[kind] || !Object.hasOwn(ROOMS, room) || this.roomObjects(room).length >= 8) return null;
-    const object = { id: this.nextId++, kind, room, ...withinHabitat(x, z, roomBounds(room).objectRadius), amount: 1 };
+    if(!Number.isFinite(x)||!Number.isFinite(z))return null;
+    const object = { id: this.nextId++, kind, room, ...withinHabitat(x, z, roomBounds(room).objectRadius), amount: 1, ...itemOptions(kind,options) };
     this.objects.push(object); this.log(`${STIMULI[kind].name} placed in ${ROOMS[room].name}.`, 'object'); return object;
   }
-  remove(id) { this.objects = this.objects.filter(o => o.id !== id); if (this.target?.id === id) this.target = null; }
-  clear(room = this.environment) { this.objects = this.objects.filter(o => (o.room ?? this.environment) !== room); if (this.target && !this.objects.includes(this.target)) this.target = null; this.log(`${ROOMS[room].name} objects cleared.`, 'system'); }
+  remove(id) { this.objects = this.objects.filter(o => o.id !== id); if (this.target?.id === id) this.target = null; if(this.belongings.active?.id===id)this.belongings.active=null; }
+  clear(room = this.environment) { this.objects = this.objects.filter(o => (o.room ?? this.environment) !== room); if (this.target && !this.objects.includes(this.target)) this.target = null; if(!this.objects.some(o=>o.id===this.belongings.active?.id))this.belongings.active=null; this.log(`${ROOMS[room].name} objects cleared.`, 'system'); }
   aimSwatter(x, z) {
     if (!Number.isFinite(x) || !Number.isFinite(z)) return;
     const target = withinHabitat(x, z, SWATTER.radius), swatter = this.swatter;
@@ -206,15 +210,18 @@ export class Simulation {
       this.state = 'Resting'; velocity = 0; desiredY = 0.87; this.energy += dt * 0.018;
     } else if (food && groups[0] > (committed ? 0.025 : 0.075) && this.appetite) {
       this.target = food; dx = food.x - this.x; dz = food.z - this.z;
-      if (Math.hypot(dx, dz) < 0.95 && this.caution < 0.23) {
+      if (Math.hypot(dx, dz) < (food.kind==='sugar'?.5:.95) && this.caution < 0.23) {
         this.state = 'Feeding'; velocity = 0; desiredY = 0.87;
         this.hunger = Math.max(0, this.hunger - dt * 0.036); this.energy = Math.min(1, this.energy + dt * 0.025);
         food.amount = Math.max(0, food.amount - dt * 0.012);
+        if(food.kind==='sugar'){desiredY=this.groundHeight()+.87+.7*(.6+food.amount*.4);rememberItem(this,food,dt,previous!=='Feeding'||!committed);}
         if (this.hunger <= 0.12 && this.energy >= 0.48) this.appetite = false;
       } else { this.state = 'Seeking food'; desiredY = 1.05; }
     } else if (this.environment === 'playground' && (motion = lessonMotion(this))) {
       this.state = motion.state; dx = motion.dx; dz = motion.dz; velocity = motion.velocity; desiredY = motion.y;
     } else if ((motion = lifeMotion(this, dt))) {
+      this.state = motion.state; dx = motion.dx; dz = motion.dz; velocity = motion.velocity; desiredY = motion.y;
+    } else if ((motion = objectMotion(this, dt))) {
       this.state = motion.state; dx = motion.dx; dz = motion.dz; velocity = motion.velocity; desiredY = motion.y;
     } else if (this.time >= this.nextGroomAt || (previous === 'Grooming' && this.time < this.groomingUntil)) {
       if (previous !== 'Grooming') {
@@ -256,7 +263,7 @@ export class Simulation {
         dx += (distance > 0.01 ? mx / distance : 1) * force; dz += (distance > 0.01 ? mz / distance : 0) * force;
       }
       const edgeDistance = Math.hypot(this.x, this.z);
-      if (!navigatingRoof && !doorway && this.state !== 'Panicking' && edgeDistance > roomBounds(this.environment).flyRadius - 1.5) { const push = (edgeDistance - roomBounds(this.environment).flyRadius + 1.5) * 2; dx -= this.x / edgeDistance * push; dz -= this.z / edgeDistance * push; }
+      if (!navigatingRoof && !doorway && this.state !== 'Panicking' && !ITEM_STATES.includes(this.state) && edgeDistance > roomBounds(this.environment).flyRadius - 1.5) { const push = (edgeDistance - roomBounds(this.environment).flyRadius + 1.5) * 2; dx -= this.x / edgeDistance * push; dz -= this.z / edgeDistance * push; }
       const angle = Math.atan2(dx, dz), diff = Math.atan2(Math.sin(angle - this.heading), Math.cos(angle - this.heading));
       this.heading += diff * (this.state === 'Panicking' ? 1 : Math.min(1, dt * 2.8));
       const travelHeading = navigatingRoof || doorway ? angle : this.heading;
@@ -273,6 +280,6 @@ export class Simulation {
     }
     if ((this.training.active || this.training.pending) && !TRAINING_STATES.includes(this.state)) cancelLesson(this, 'Something else needs his attention. Try the lesson again when he is settled.');
     this.y += (desiredY + (velocity ? Math.sin(this.time * 3.4) * 0.09 : 0) - this.y) * Math.min(1, dt * 3);
-    if (this.state !== previous && this.state !== 'Cautious') this.log(({ ...Object.fromEntries(LIFE_STATES.map(s => [s, s === 'Heading out' ? `Heading for ${ROOMS[this.life.destination]?.name ?? 'another room'}.` : `${s}.`])), Listening: 'Listening for your cue.', 'Coming when called': this.training.active?.perch === 'you' ? 'Responding to your cue. Coming over to say hello.' : 'Following your call to the landing pad.', 'Practicing flip': 'Practicing a little tumble.', Backflipping: 'A learned backflip, just for you.', 'Waiting for treat': 'Waiting for a little reward.', Perching: 'Settling onto a favorite perch.', 'Finding a perch': 'Looking for a comfortable perch.' })[this.state] ?? (this.state === 'Locked in' ? 'Locked in. Working through the markets.' : this.state === 'Watching screen' ? 'Front-row seat. Watching the glowing screen.' : this.state === 'Approaching screen' ? 'Heading over to the laptop.' : this.state === 'Panicking' ? 'Swatter nearby! Taking off in a hurry.' : this.state === 'Seeking food' ? `Picked up the scent of ${STIMULI[food.kind].name.toLowerCase()}.` : this.state === 'Feeding' ? 'Landed. A little snack is in order.' : this.state === 'Avoiding' ? 'Strong stimulus detected. Moving away.' : this.state === 'Grooming' ? 'A quiet spot. Landing for a little grooming.' : this.state === 'Resting' ? 'Taking a moment to recharge.' : previous === 'Feeding' && !this.appetite ? 'Full for now. Off to explore.' : 'Off to explore again.'));
+    if (this.state !== previous && this.state !== 'Cautious') this.log(({ ...Object.fromEntries(ITEM_STATES.map(s=>[s,s+'.'])), ...Object.fromEntries(LIFE_STATES.map(s => [s, s === 'Heading out' ? `Heading for ${ROOMS[this.life.destination]?.name ?? 'another room'}.` : `${s}.`])), Listening: 'Listening for your cue.', 'Coming when called': this.training.active?.perch === 'you' ? 'Responding to your cue. Coming over to say hello.' : 'Following your call to the landing pad.', 'Practicing flip': 'Practicing a little tumble.', Backflipping: 'A learned backflip, just for you.', 'Waiting for treat': 'Waiting for a little reward.', Perching: 'Settling onto a favorite perch.', 'Finding a perch': 'Looking for a comfortable perch.' })[this.state] ?? (this.state === 'Locked in' ? 'Locked in. Working through the markets.' : this.state === 'Watching screen' ? 'Front-row seat. Watching the glowing screen.' : this.state === 'Approaching screen' ? 'Heading over to the laptop.' : this.state === 'Panicking' ? 'Swatter nearby! Taking off in a hurry.' : this.state === 'Seeking food' ? `Picked up the scent of ${STIMULI[food.kind].name.toLowerCase()}.` : this.state === 'Feeding' ? 'Landed. A little snack is in order.' : this.state === 'Avoiding' ? 'Strong stimulus detected. Moving away.' : this.state === 'Grooming' ? 'A quiet spot. Landing for a little grooming.' : this.state === 'Resting' ? 'Taking a moment to recharge.' : previous === 'Feeding' && !this.appetite ? 'Full for now. Off to explore.' : 'Off to explore again.'));
   }
 }

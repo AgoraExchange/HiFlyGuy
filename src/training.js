@@ -5,7 +5,7 @@ export const HUMAN = { x: -3.5, z: 6.5 };
 export const HELLO_SPOT = { name: 'you', x: HUMAN.x, z: HUMAN.z - 1.9, height: 0 };
 export const recallTarget = (selected, observer) => {
   if (selected !== 'you') return PERCHES[selected];
-  if (!observer) return HELLO_SPOT;
+  if (!observer || observer.room && observer.room!=='playground') return HELLO_SPOT;
   let x=observer.x+(observer.forwardX??0)*2.8,z=observer.z+(observer.forwardZ??-1)*2.8;
   const r=Math.hypot(x,z);if(r>PARK.flyRadius-.5){x*= (PARK.flyRadius-.5)/r;z*= (PARK.flyRadius-.5)/r;}
   return { x,z,height:Math.max(parkSurfaceHeight(x,z),observer.y-PARK.eyeHeight) };
@@ -77,7 +77,10 @@ export function lessonMotion(sim) {
   if (sim.time - a.started < a.delay) return { state: 'Listening', velocity: 0, y: floor + .87 };
   if (a.kind === 'call') {
     const p = recallTarget(a.perch,sim.observer), dx = p.x - sim.x, dz = p.z - sim.z, arrived = Math.hypot(dx, dz) < .5;
-    if (arrived && a.perch === 'you') sim.heading = Math.atan2((sim.observer??HUMAN).x - sim.x, (sim.observer??HUMAN).z - sim.z);
+    if (arrived && a.perch === 'you') {
+      const viewer=sim.observer&&(!sim.observer.room||sim.observer.room==='playground')?sim.observer:HUMAN;
+      sim.heading = Math.atan2(viewer.x - sim.x, viewer.z - sim.z);
+    }
     if (arrived && Math.abs(sim.y - p.height - .87) < .08) { complete(sim); return lessonMotion(sim); }
     return { state: 'Coming when called', dx, dz, velocity: arrived ? 0 : Math.max(1.1 + t.call * 1.4, Math.min(4, Math.hypot(dx, dz) / 7)), y: p.height + .87 + (arrived ? 0 : .6) };
   }

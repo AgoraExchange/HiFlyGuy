@@ -1,18 +1,21 @@
+import { itemCollider } from './world-items.js';
 import { PARK, parkWalkingHeight } from './park-layout.js';
 import * as THREE from 'three';
 import { HUMAN } from './training.js';
-import { withinHabitat } from './simulation.js';
+import { withinHabitat, roomBounds } from './simulation.js';
+import { WALKTHROUGH, roomColliders, constrainRoom, insideRoom } from './walkthrough.js';
 import { ROOMS } from './life.js';
 import { separateViewer } from './presence.js';
 
 // A camera at the familiar presence's actual eye height. World geometry stays unchanged.
 export class FirstPerson {
-  constructor(habitat, { selectFruit, place, cancelPlacement, inviteFly }) {
+  constructor(habitat, { openCatalog=()=>{}, selectFruit, place, cancelPlacement, inviteFly, allowed = room => room==='playground', authorize = allowed }) {
+    this.allowed=allowed;this.authorize=authorize;
     this.habitat = habitat; this.keys = new Set(); this.active = false; this.cancelPlacement = cancelPlacement;
     this.stick = { x: 0, y: 0 }; this.touchRun = false;
     const button = document.createElement('button'); button.id = 'first-person-btn'; button.type = 'button'; button.hidden = true;
     button.textContent = 'Join World'; button.setAttribute('aria-pressed', 'false');
-    button.title = 'Explore the playground in first person and interact with FlyGuy';
+    button.title = 'Explore in first person and interact with FlyGuy';
     document.querySelector('#autonomy-btn').after(button); this.button = button;
     this.button.onclick = () => this.active ? this.exit() : this.enter();
     const hud = document.createElement('div'); hud.className = 'first-person-hud'; hud.hidden = true;
@@ -21,7 +24,7 @@ export class FirstPerson {
       <div class="first-person-bottom"><div class="first-person-movement" role="group" aria-label="Move through the playground">
       <button data-move="KeyW" aria-label="Fly forward">↑</button><button data-move="KeyA" aria-label="Fly left">←</button><button data-move="KeyS" aria-label="Fly backward">↓</button><button data-move="KeyD" aria-label="Fly right">→</button><button data-move="KeyQ" aria-label="Fly lower">−</button><button data-move="KeyE" aria-label="Fly higher">+</button></div>
       <div class="first-person-touch"><div id="movement-joystick" role="group" aria-label="Movement joystick: drag with your left thumb"><span class="joystick-thumb"></span><span class="joystick-caption">MOVE</span></div><button id="touch-run" aria-pressed="false">Run</button></div>
-      <div class="first-person-fruit"><button data-fruit="banana">Banana</button><button data-fruit="tomato">Tomato</button><button id="first-person-drop">Place in front</button><button id="first-person-find">Invite FlyGuy</button><button id="first-person-train" aria-expanded="false">Train FlyGuy</button><button id="first-person-slide" hidden>Slide down</button><button id="first-person-home" title="Return to your original eye position">Back to your spot</button></div></div>`;
+      <div class="first-person-fruit"><button data-fruit="banana">Banana</button><button data-fruit="tomato">Tomato</button><button id="first-person-objects">Objects</button><button id="first-person-drop">Place in front</button><button id="first-person-find">Invite FlyGuy</button><button id="first-person-train" aria-expanded="false">Train FlyGuy</button><button id="first-person-slide" hidden>Slide down</button><button id="first-person-home" title="Return to your original eye position">Back to your spot</button></div></div>`;
     habitat.container.append(hud); this.hud = hud;
     const joystick = hud.querySelector('#movement-joystick'), thumb = joystick.querySelector('.joystick-thumb');
     this.releaseStick = () => { this.stick = { x: 0, y: 0 }; this.stickPointer = null; thumb.style.transform = 'translate(0px, 0px)'; joystick.classList.remove('engaged'); };
@@ -47,11 +50,12 @@ export class FirstPerson {
     };
     hud.querySelector('#first-person-slide').onclick = () => this.startSlide();
     hud.querySelector('#first-person-find').onclick = () => {
-      if (this.sim?.environment !== 'playground') { inviteFly(); return; }
+      if (this.sim?.environment !== habitat.environment) { inviteFly(); return; }
       const direction = habitat.fly.group.position.clone().sub(habitat.camera.position);
       this.yaw = Math.atan2(-direction.x, -direction.z);
       this.pitch = Math.max(-1.35, Math.min(1.35, Math.atan2(direction.y, Math.hypot(direction.x, direction.z)))); this.look();
     };
+    hud.querySelector('#first-person-objects').onclick=()=>{this.keys.clear();this.releaseStick();this.touchRun=false;openCatalog();};
     hud.querySelectorAll('[data-fruit]').forEach(button => button.onclick = () => selectFruit(button.dataset.fruit));
     hud.querySelector('#first-person-drop').onclick = () => { const p = this.ahead(); place(p.x, p.z); };
     hud.querySelectorAll('[data-move]').forEach(button => {
@@ -84,20 +88,22 @@ export class FirstPerson {
     this.sliding = null;
     this.walking = true;
     this.releaseStick();
-    this.keys.clear(); this.habitat.camera.position.set(HUMAN.x, 2.05, HUMAN.z);
+    this.keys.clear(); this.habitat.camera.position.set(...(WALKTHROUGH[this.habitat.environment]?.home ?? [HUMAN.x,2.05,HUMAN.z]));
     this.previousEye = this.habitat.camera.position.clone(); this.previousFly = null;
     this.yaw = 0; this.pitch = -.1; this.look();
   }
   look() { this.habitat.camera.quaternion.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ')); }
   enter() {
-    const h = this.habitat; if (h.environment !== 'playground') return;
+    const h = this.habitat; if (!this.authorize(h.environment)) return;
+    this.room=h.environment;this.colliders=roomColliders(h);
     h.endEncounter(); this.cancelPlacement();
     this.saved = { position: h.camera.position.clone(), target: h.controls.target.clone(), fov: h.camera.fov, follow: h.follow, homeFraming: h.homeFraming };
     this.active = true; h.follow = h.homeFraming = false; h.controls.enabled = false;
-    h.playground.person.visible = false; h.camera.fov = 65; h.camera.updateProjectionMatrix(); this.home();
+    if(h.environment==='playground')h.playground.person.visible = false;
+    h.camera.fov = 65; h.camera.updateProjectionMatrix(); this.home();
     h.container.classList.add('first-person'); h.container.dataset.firstPerson = 'true'; this.hud.hidden = false;
     this.button.textContent = 'Return to overhead view'; this.button.setAttribute('aria-pressed', 'true');
-    h.renderer.domElement.setAttribute('aria-label', 'First person playground. Drag to look. W A S D to move. Arrow keys to look. Hold Space to run; Q and E to change height.');
+    h.renderer.domElement.setAttribute('aria-label', `First person ${ROOMS[h.environment].name}. Drag to look. W A S D to move. Arrow keys to look. Hold Space to run; Q and E to change height.`);
     h.renderer.domElement.focus({ preventScroll: true }); h.container.scrollIntoView({ block: 'center', behavior: 'instant' });
   }
   exit() {
@@ -105,30 +111,36 @@ export class FirstPerson {
     this.habitat.endEncounter(); if (this.sim) this.sim.observer = null;
     const h = this.habitat; this.active = false; this.keys.clear(); this.pointer = null;
     this.releaseStick(); this.sliding=null; this.touchRun=false;this.hud.querySelector('#touch-run').setAttribute('aria-pressed','false');this.hud.querySelector('#touch-run').textContent='Run';
-    this.cancelPlacement(); h.playground.person.visible = true;
+    this.cancelPlacement(); if(h.playground)h.playground.person.visible = true;
     h.camera.position.copy(this.saved.position); h.camera.fov = this.saved.fov; h.camera.updateProjectionMatrix();
     h.controls.target.copy(this.saved.target); h.controls.enabled = true; h.controls.update();
     h.follow = this.saved.follow; h.homeFraming = this.saved.homeFraming;
     h.container.classList.remove('first-person'); h.container.dataset.firstPerson = 'false'; this.hud.hidden = true;
     h.container.classList.remove('first-person-training');this.hud.querySelector('#first-person-train').setAttribute('aria-expanded','false');this.hud.querySelector('#first-person-train').textContent='Train FlyGuy';
-    document.querySelector('#training-dock').hidden=document.querySelector('#training-toggle').getAttribute('aria-expanded')!=='true';
+    document.querySelector('#training-dock').hidden=h.environment!=='playground'||document.querySelector('#training-toggle').getAttribute('aria-expanded')!=='true';
     this.button.textContent = 'Join World'; this.button.setAttribute('aria-pressed', 'false');
     h.renderer.domElement.setAttribute('aria-label', 'Interactive 3D habitat. Drag to orbit, scroll to zoom.');
   }
   ahead() {
     const direction = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
     const p = this.habitat.camera.position.clone().addScaledVector(direction, 2.5);
-    return withinHabitat(p.x, p.z, PARK.objectRadius - .1);
+    return withinHabitat(p.x, p.z, roomBounds(this.habitat.environment).objectRadius - .1);
   }
   addressSpot() {
     if (this.sliding) return null;
     const h = this.habitat, direction = h.camera.getWorldDirection(new THREE.Vector3());
     const point = h.camera.position.clone().addScaledVector(direction, 4.5);
     // Wait for a view with enough room to hover in front of the person.
-    if (Math.hypot(point.x, point.z) > PARK.flyRadius - .3 || point.y < 1.6 || point.y > 9) return null;
+    if (h.environment==='playground' && Math.hypot(point.x, point.z)>PARK.flyRadius-.3 || point.y<1.6 || point.y>9) return null;
+    if(WALKTHROUGH[h.environment]){
+      if(!insideRoom(point,WALKTHROUGH[h.environment].bounds))return null;
+      const ray=new THREE.Ray(h.camera.position,direction);
+      if(this.colliders.some(box=>{const hit=ray.intersectBox(box.clone().expandByScalar(.65),new THREE.Vector3());return hit&&hit.distanceTo(h.camera.position)<5.2;}))return null;
+    }
     return point;
   }
   nearbySlide() {
+    if(this.habitat.environment!=='playground')return null;
     const p = this.habitat.camera.position;
     return this.habitat.playground?.slides?.find(s => Math.hypot(p.x-s.top.x,p.z-s.top.z)<1.6 && Math.abs(p.y-PARK.eyeHeight-s.top.y)<.3);
   }
@@ -143,19 +155,25 @@ export class FirstPerson {
     if (h.encounter?.firstPerson) {
       eye.copy(h.encounter.camera); h.camera.quaternion.copy(h.encounter.quaternion);
       this.previousFly = fly.clone();
-    } else if (sim.environment === 'playground') {
+    } else if (sim.environment === h.environment) {
       eye.copy(separateViewer(this.previousEye ?? eye, eye, this.previousFly ?? fly, fly));
       this.previousFly = fly.clone();
     } else this.previousFly = null;
+    if(!h.encounter?.firstPerson&&WALKTHROUGH[h.environment])constrainRoom(eye,this.colliders,WALKTHROUGH[h.environment].bounds);
+    if(!h.encounter?.firstPerson){const boxes=sim.roomObjects(h.environment).flatMap(o=>{const box=itemCollider(o,sim.groundHeight(o.x,o.z,o.room));return box?[box]:[];});constrainRoom(eye,boxes,WALKTHROUGH[h.environment]?.bounds??[-38,38,-38,38]);}
     this.previousEye = eye.clone();
     // Transient observer position: deliberately excluded from saved world state.
-    sim.observer = { x: eye.x, y: eye.y, z: eye.z, forwardX:-Math.sin(this.yaw),forwardZ:-Math.cos(this.yaw) };
+    sim.observer = { room:h.environment, x: eye.x, y: eye.y, z: eye.z, forwardX:-Math.sin(this.yaw),forwardZ:-Math.cos(this.yaw) };
   }
   update(dt, sim) {
     this.sim = sim;
-    const h = this.habitat; this.button.hidden = h.environment !== 'playground';
+    const h = this.habitat, locked=!this.allowed(h.environment);
+    this.button.hidden=false;this.button.classList.toggle('access-locked',locked);
+    this.button.setAttribute('aria-description',locked?'Membership required. View plans to join this room.':`Explore ${ROOMS[h.environment].name} in first person`);
+    this.button.title=locked?'Join this room with a membership — view plans':'Explore in first person';
     if (!this.active) return;
-    if (h.environment !== 'playground') { this.exit(); return; }
+    if (h.environment !== this.room || locked) { this.exit(); return; }
+    this.hud.querySelector('#first-person-train').hidden=h.environment!=='playground';
     const slideButton = this.hud.querySelector('#first-person-slide');
     const nearSlide = this.nearbySlide();
     slideButton.hidden = !nearSlide || !!this.sliding;
@@ -165,7 +183,7 @@ export class FirstPerson {
       const progress=Math.min(1,this.sliding.elapsed/this.sliding.duration), point=this.sliding.slide.path.getPoint(progress), tangent=this.sliding.slide.path.getTangent(progress);
       h.camera.position.set(point.x,point.y+PARK.eyeHeight*.72,point.z);
       this.yaw=Math.atan2(-tangent.x,-tangent.z);this.pitch=Math.atan2(tangent.y,Math.hypot(tangent.x,tangent.z));this.look();
-      sim.observer={x:h.camera.position.x,y:h.camera.position.y,z:h.camera.position.z,forwardX:-Math.sin(this.yaw),forwardZ:-Math.cos(this.yaw)};
+      sim.observer={room:h.environment,x:h.camera.position.x,y:h.camera.position.y,z:h.camera.position.z,forwardX:-Math.sin(this.yaw),forwardZ:-Math.cos(this.yaw)};
       if(progress>=1){
         this.sliding=null;this.walking=true;
         h.camera.position.addScaledVector(new THREE.Vector3(tangent.x,0,tangent.z).normalize(),1.4);
@@ -173,7 +191,7 @@ export class FirstPerson {
       }
       return;
     }
-    const present = sim.environment === 'playground';
+    const present = sim.environment === h.environment;
     this.hud.querySelector('#first-person-presence').textContent = present ? `FlyGuy / ${h.encounter?.firstPerson ? 'Talking to you' : sim.state}` : `FlyGuy is in ${ROOMS[sim.environment]?.name ?? sim.environment}`;
     this.hud.querySelector('#first-person-find').textContent = present ? 'Look at FlyGuy' : 'Invite FlyGuy';
     this.hud.querySelector('#first-person-drop').disabled = !h.placing;
@@ -187,7 +205,7 @@ export class FirstPerson {
     direction.clampLength(0,1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
     h.camera.position.addScaledVector(direction, Math.min(dt, .1) * (k('Space') || this.touchRun ? PARK.runSpeed : PARK.walkSpeed));
     const p = h.camera.position, radius = Math.hypot(p.x, p.z), bound = PARK.flyRadius;
-    if (radius > bound) { p.x *= bound / radius; p.z *= bound / radius; }
+    if (h.environment==='playground' && radius > bound) { p.x *= bound / radius; p.z *= bound / radius; }
     p.y = Math.max(.6, Math.min(9, p.y));
     // Colliders match tree trunks, benches, planters, equipment and fence posts.
     const distance = this.previousEye ? this.previousEye.distanceTo(p) : 0;
@@ -197,20 +215,21 @@ export class FirstPerson {
     for (let step=0;step<steps;step++) {
       const before = p.clone();
       p.add(movement);
-      const floor = parkWalkingHeight(p.x,p.z);
+      const floor = h.environment==='playground'?parkWalkingHeight(p.x,p.z):0;
       if (this.walking) {
         if (floor > before.y-PARK.eyeHeight+.4) { p.copy(before); continue; }
         if (movement.lengthSq()>0 || floor>0) p.y=floor+PARK.eyeHeight;
       } else if (p.y<=floor+PARK.eyeHeight && before.y>=floor+PARK.eyeHeight) {
         p.y=floor+PARK.eyeHeight;this.walking=true;
       }
-      for (const obstacle of h.playground.colliders) {
+      if(h.environment!=='playground')constrainRoom(p,this.colliders,WALKTHROUGH[h.environment].bounds);
+      for (const obstacle of h.environment==='playground'?h.playground.colliders:[]) {
         if (p.y - PARK.eyeHeight >= obstacle.height-.01 || p.y + .2 <= obstacle.base) continue;
         const dx=p.x-obstacle.x,dz=p.z-obstacle.z,d=Math.hypot(dx,dz),r=obstacle.radius+.32;
         if(d<r){p.x=obstacle.x+(d>.001?dx/d:1)*r;p.z=obstacle.z+(d>.001?dz/d:0)*r;}
       }
     }
     this.look();
-    sim.observer = { x: p.x, y: p.y, z: p.z, forwardX:-Math.sin(this.yaw),forwardZ:-Math.cos(this.yaw) };
+    sim.observer = { room:h.environment, x: p.x, y: p.y, z: p.z, forwardX:-Math.sin(this.yaw),forwardZ:-Math.cos(this.yaw) };
   }
 }
