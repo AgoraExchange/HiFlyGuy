@@ -4,7 +4,7 @@ for (const fallback of [false, true]) test(`Market and chart settings survive te
   await mockMarket(page);
   if (fallback) await page.addInitScript(() => { Element.prototype.moveBefore = undefined; });
   await page.goto('/');
-  await page.getByRole('button', {name:'03 Night desk',exact:true}).click();
+  await page.getByRole('button', {name:'02 Night desk',exact:true}).click();
   await page.locator('#terminal-btn').click();
   const terminal = page.frameLocator('#terminal-mount iframe');
   await terminal.locator('#symbol').selectOption('NASDAQ:AAPL');
@@ -24,7 +24,7 @@ test('Adderall travels, cycles markets and chart settings, pauses, and stops', a
   const errors=[]; page.on('pageerror',e=>errors.push(e.message));
   await mockMarket(page); await page.goto('/');
   await expect(page.locator('#adderall-btn')).toBeHidden();
-  await page.getByRole('button',{name:'03 Night desk',exact:true}).click();
+  await page.getByRole('button',{name:'02 Night desk',exact:true}).click();
   await page.locator('#adderall-btn').click();
   await expect(page.locator('#adderall-btn')).toHaveAttribute('aria-pressed','true');
   await expect(page.locator('#behavior-pill')).toHaveText('Locked in',{timeout:35000});

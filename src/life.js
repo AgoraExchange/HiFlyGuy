@@ -3,14 +3,16 @@ import { newSocial, decodeSocial, updateSocial, dismissBuzz } from './social-lif
 // Authored fictional routines, separate from the illustrative neural controller.
 export const ROOMS = {
   habitat: { name: 'Habitat', subtitle: 'A room of his own.', exit: [7, -4], station: [-3.5, -3], action: 'Sleeping', duration: 28, links: ['fireescape', 'computer', 'playground', 'store'] },
-  fireescape: { name: 'Fire escape', subtitle: 'A small light in the city.', exit: [0, -7], station: [1.5, 6.5], action: 'Smoking', duration: 22, links: ['habitat', 'rooftop'] },
   computer: { name: 'Night desk', subtitle: 'The world behind the screen.', exit: [7, 3], links: ['habitat', 'bar'] },
-  bar: { name: 'Bar', subtitle: 'The small hours.', exit: [7, 4], station: [0, -3.4], action: 'Having a drink', duration: 18, links: ['computer', 'rooftop'] },
+  fireescape: { name: 'Fire escape', subtitle: 'A small light in the city.', exit: [0, -7], station: [1.5, 6.5], action: 'Smoking', duration: 22, links: ['habitat', 'rooftop'] },
   rooftop: { name: 'Rooftop', subtitle: 'Somewhere above it all.', exit: [-6, 4], station: [0, -7], action: 'Watching the city', duration: 26, links: ['bar', 'fireescape'] },
+  bar: { name: 'Bar', subtitle: 'The small hours.', exit: [7, 4], station: [0, -3.4], action: 'Having a drink', duration: 18, links: ['computer', 'rooftop'] },
+  store: { name: '7-11', subtitle: 'Clock in. Keep the lights on.', exit: [7, 4], station: [-2, -7.2], action: 'Working', duration: 10000, links: ['habitat', 'bar'] },
   playground: { name: 'Playground', subtitle: 'A little trust. A little magic.', exit: [0, 8], links: ['habitat'] },
 };
-ROOMS.store = { name: '7-11', subtitle: 'Clock in. Keep the lights on.', exit: [7, 4], station: [-2, -7.2], action: 'Working', duration: 10000, links: ['habitat', 'bar'] };
 ROOMS.bar.links.push('store');
+ROOMS.megacity = { name: 'Megacity', subtitle: 'A million wings. One city.', exit: [7, 4], station: [0, -3], action: 'Working', duration: 90, links: ['habitat'] };
+ROOMS.habitat.links.push('megacity');
 export const LIFE_STATES = ['Buying groceries', 'Working', 'Heading out', 'Crossing doorway', 'Settling in', 'Sleeping', 'Making the bed', 'Smoking', 'Having a drink', 'Watching the city'];
 export const isRoom = room => Object.hasOwn(ROOMS, room);
 const clamp = n => Math.max(0, Math.min(1, n));
@@ -128,6 +130,9 @@ export function lifeMotion(sim, dt) {
       if (sim.energy < .55 || l.buzz > .3) l.action = 'Sleeping';
       else if (l.tidiness < .75 && l.motivation > .52) l.action = 'Making the bed';
       else if (!staying) startTravel(sim, sim.random() < .45 + l.smokingHabit * .25 ? 'fireescape' : sim.random() < .6 ? 'computer' : 'playground');
+    } else if (sim.environment === 'megacity') {
+      if (!staying && sim.random() < .25) startTravel(sim, 'habitat');
+      else l.action = 'Working';
     } else if (sim.environment === 'fireescape') {
       if (sim.state === 'Smoking' || l.cigarettes > 0 && sim.random() < .55 && !staying) startTravel(sim, sim.random() < .75 ? 'habitat' : 'rooftop');
       else l.action = 'Smoking';

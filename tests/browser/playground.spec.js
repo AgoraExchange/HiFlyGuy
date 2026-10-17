@@ -3,7 +3,7 @@ import { test, expect } from './member-fixture.js';
 for (const mobile of [false, true]) test(`FlyGuy comes to YOU and can be rewarded (${mobile ? 'phone fullscreen' : 'desktop with reload'})`, async ({ page }) => {
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   if (mobile) await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/'); await page.getByRole('button', { name: '06 Playground', exact: true }).click();
+  await page.goto('/'); await page.getByRole('button', { name: '07 Playground', exact: true }).click();
   await page.locator('#invite-fly').click(); await expect(page.locator('#viewport')).toHaveAttribute('data-fly-present', 'true', { timeout: 25000 });
   if (mobile) await page.getByRole('button', { name: 'Fullscreen habitat', exact: true }).click();
   await page.locator('#perch-select').selectOption('1');
@@ -34,7 +34,7 @@ for (const mobile of [false, true]) test(`FlyGuy comes to YOU and can be rewarde
 test('Playground practice builds saved bond, improves recall, and unlocks a full backflip', async ({ page }) => {
   test.setTimeout(100000);
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto('/'); await page.getByRole('button', { name: '06 Playground', exact: true }).click();
+  await page.goto('/'); await page.getByRole('button', { name: '07 Playground', exact: true }).click();
   await page.locator('#invite-fly').click(); await expect(page.locator('#viewport')).toHaveAttribute('data-fly-present', 'true', { timeout: 25000 });
   await expect(page.locator('#viewport')).toHaveAttribute('data-environment', 'playground');
   await expect(page.locator('#bond-value')).toHaveText('12%');
@@ -67,7 +67,7 @@ test('Playground practice builds saved bond, improves recall, and unlocks a full
 
 test('Playground training, rewards, and inventory fit in phone fullscreen', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/');
-  await page.getByRole('button', { name: '06 Playground', exact: true }).click();
+  await page.getByRole('button', { name: '07 Playground', exact: true }).click();
   await page.locator('#invite-fly').click(); await expect(page.locator('#viewport')).toHaveAttribute('data-fly-present', 'true', { timeout: 25000 });
   await page.getByRole('button', { name: 'Fullscreen habitat', exact: true }).click();
   await page.locator('#perch-select').selectOption('1');

@@ -94,6 +94,7 @@ export class FirstPerson {
   }
   look() { this.habitat.camera.quaternion.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ')); }
   enter() {
+    if (this.habitat.environment === 'megacity') return;
     const h = this.habitat; if (!this.authorize(h.environment)) return;
     this.room=h.environment;this.colliders=roomColliders(h);
     h.endEncounter(); this.cancelPlacement();
@@ -168,7 +169,7 @@ export class FirstPerson {
   update(dt, sim) {
     this.sim = sim;
     const h = this.habitat, locked=!this.allowed(h.environment);
-    this.button.hidden=false;this.button.classList.toggle('access-locked',locked);
+    this.button.hidden=this.habitat.environment === 'megacity';this.button.classList.toggle('access-locked',locked);
     this.button.setAttribute('aria-description',locked?'Membership required. View plans to join this room.':`Explore ${ROOMS[h.environment].name} in first person`);
     this.button.title=locked?'Join this room with a membership — view plans':'Explore in first person';
     if (!this.active) return;

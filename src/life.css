@@ -2,7 +2,7 @@
 .viewport:fullscreen{height:100dvh}
 .viewport .scene-title,.viewport .desk-caption{display:none}
 .viewport .scene-top{z-index:2}
-.viewport .environment-controls{right:65px;left:23px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;background:#101a24eb;border-color:#354855}
+.viewport .environment-controls{right:65px;left:23px;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:2px;background:#101a24eb;border-color:#354855}
 .viewport .environment-controls button{position:relative;justify-content:center;padding:9px 4px;font-size:8px;gap:5px}
 .viewport .environment-controls button span{font-size:10px;white-space:nowrap}
 .environment-controls button i{position:absolute;bottom:3px;width:3px;height:3px;border-radius:50%;background:transparent}

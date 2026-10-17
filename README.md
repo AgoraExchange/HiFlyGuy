@@ -79,7 +79,7 @@ These are fictional character routines and virtual-pet variables, not prediction
 
 Click or tap the market button on the laptop itself to switch between BTC/USD, ETH/USD, XMR/USD (Kraken), Apple, and NVIDIA. The menu works directly in the 3D scene and in fullscreen; dragging still orbits the camera. Screen clicks respect the laptop's orientation and foreground objects. The enlarged terminal shares the same selected market. BTC, ETH, and XMR are cryptocurrencies.
 
-Use **03 Night desk** to view the computer environment: a laptop, cyan desk lights, speakers, a tower, a mug, and a night window. Room tabs change the camera, not FlyGuy's location. If he is elsewhere, **Invite here** asks him to travel to the desk. Each room retains its own objects and memories; all rooms share one saved life. Reset begins again in the bedroom.
+Use **02 Night desk** to view the computer environment: a laptop, cyan desk lights, speakers, a tower, a mug, and a night window. Room tabs change the camera, not FlyGuy's location. If he is elsewhere, **Invite here** asks him to travel to the desk. Each room retains its own objects and memories; all rooms share one saved life. Reset begins again in the bedroom.
 
 **Watching enabled** lets FlyGuy approach a spot in front of the laptop, land, and face the screen. Toggle it off for free roaming. Feeding, low energy, grooming, peppermint, and swatter escape retain their priorities. Watching is an authored activity, not market comprehension, financial prediction, or a trained policy. The market feed does not drive the neural controller.
 
@@ -91,7 +91,7 @@ External internet access to TradingView is required. A failed script request or 
 
 **Practice with me** calls FlyGuy to a greeting spot in front of your holographic YOU marker. He lands facing you, then waits for **Give a treat**. **Come to me** tests the learned cue without guidance; his recall skill and Bond affect willingness and response time. These buttons always target you, regardless of the currently selected pad. You can also choose **Me (YOU marker)** in the destination menu. Personal visits are labeled separately in practice history and share the existing recall skill and reward rules. Active visits and their reward windows survive reloads.
 
-Choose **06 Playground**, then **Invite here** if FlyGuy is elsewhere, for three raised landing pads, a play arch, and a holographic human marker labeled YOU. FlyGuy can visit and land on the pads on his own. Click a pad or choose it in the training menu, then:
+Choose **07 Playground**, then **Invite here** if FlyGuy is elsewhere, for three raised landing pads, a play arch, and a holographic human marker labeled YOU. FlyGuy can visit and land on the pads on his own. Click a pad or choose it in the training menu, then:
 
 1. Choose **Practice call**. He listens, approaches the selected pad, and lands.
 2. Click **Give a treat** within 12 simulation seconds after completion. This reinforces the cue and raises Bond. Merely pressing a cue or reward button does not earn progress.

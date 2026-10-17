@@ -9,7 +9,7 @@ test('Night desk preserves the world, supports watching, and survives unavailabl
   await page.getByRole('button', { name: 'Pause virtual world', exact: true }).click();
   await page.waitForTimeout(200);
   const coordinates = await page.locator('#coordinates').textContent();
-  await page.getByRole('button', { name: '03 Night desk', exact: true }).click();
+  await page.getByRole('button', { name: '02 Night desk', exact: true }).click();
   await expect(page.locator('#viewport')).toHaveAttribute('data-environment', 'computer');
   await expect(page.locator('#object-count')).toHaveText('0 objects');
   await expect(page.locator('#coordinates')).toHaveText(coordinates);
@@ -42,7 +42,7 @@ test('Night desk preserves the world, supports watching, and survives unavailabl
 test('Night desk and market terminal work in phone fullscreen', async ({ page }) => {
   await page.route('https://s3.tradingview.com/**', route => route.abort());
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/');
-  await page.getByRole('button', { name: '03 Night desk', exact: true }).click();
+  await page.getByRole('button', { name: '02 Night desk', exact: true }).click();
   await page.getByRole('button', { name: 'Fullscreen habitat', exact: true }).click();
   await expect(page.locator('#inventory')).toBeVisible();
   await page.screenshot({ path: 'test-results/night-desk-mobile.png' });
@@ -77,7 +77,7 @@ for (const mobile of [false, true]) test(`Laptop market selector works directly 
   await page.route('https://s3.tradingview.com/**', route => route.abort());
   if (mobile) await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/'); await page.getByRole('button', { name: 'Pause virtual world', exact: true }).click();
-  await page.getByRole('button', { name: '03 Night desk', exact: true }).click();
+  await page.getByRole('button', { name: '02 Night desk', exact: true }).click();
   if (mobile) await page.getByRole('button', { name: 'Fullscreen habitat', exact: true }).click();
   const terminal = page.frameLocator('.laptop-display iframe');
   await expect(terminal.locator('#scene-market-button')).toHaveText('BTC / USD');

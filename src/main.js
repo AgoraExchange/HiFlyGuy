@@ -1,3 +1,4 @@
+import './megacity.css';
 import { NEW_ITEMS, itemAction, isFreeFruit } from './world-items.js';
 import { itemIcon, hotbarHTML, setupHotbar } from './hotbar.js';
 import { FirstPerson } from './first-person.js';
@@ -110,6 +111,7 @@ const formatTime = (n, hours = false) => { const s = Math.floor(n); return (hour
 function toast(message) { $('#toast').textContent = message; $('#toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').hidden = true, 3500); }
 function cancelPlacement() { placing = null; swatterEquipped = false; sim.putAwaySwatter(); habitat?.setSwatter(false); habitat?.setPlacement(false); $('#placement-banner').hidden = true; $('#swatter-banner').hidden = true; document.querySelectorAll('[data-stimulus], [data-tool]').forEach(b => { b.classList.remove('selected'); b.setAttribute('aria-pressed', 'false'); }); }
 function equipSwatter() {
+  if (viewRoom === 'megacity') return toast('The colony is working. Visit his other rooms to use the swatter.');
   if(!authorize('interact'))return;
   if (!habitat) return;
   if (sim.environment !== viewRoom) return toast('FlyGuy is in another room. Use Find FlyGuy to visit him.');
@@ -198,6 +200,7 @@ refreshEnvironment();
 director = setupDirector({ authorize:()=>authorize('director'), allowed:()=>allowed('director'), viewport: $('#viewport'), prepare: () => { habitat?.firstPerson?.exit(); dialogue.cancel(); cancelPlacement(); selectObject(null); $('#dialog').close(); $('#terminal-dialog').close(); saveWorld(); } });
 
 function selectStimulus(kind) {
+  if (viewRoom === 'megacity') return toast('Explore the city towers here. Place personal objects in his other rooms.');
   if(!isFreeFruit(kind)&&!authorize('interact'))return;
   if(isFreeFruit(kind)&&!allowed('food',viewRoom)){toast('Leave fruit in the Habitat. FlyGuy can find it when he returns.');viewEnvironment('habitat');}
   if(!allowed(itemAction(kind),viewRoom))return;

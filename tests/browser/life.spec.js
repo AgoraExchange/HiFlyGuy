@@ -20,7 +20,7 @@ test('Room cameras, local inventory, invitations and an absent fly survive reloa
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/'); await page.locator('#pause-btn').click();
   await page.getByRole('button', { name: 'Place ripe banana', exact: true }).click(); await page.locator('#place-center').click();
-  await page.getByRole('button', { name: '02 Fire escape', exact: true }).click();
+  await page.getByRole('button', { name: '03 Fire escape', exact: true }).click();
   await expect(page.locator('#viewport')).toHaveAttribute('data-fly-present', 'false');
   await expect(page.locator('#actual-room')).toHaveText('Habitat'); await expect(page.locator('#object-count')).toHaveText('0 objects');
   await expect(page.locator('#fly-label')).toBeHidden();

@@ -6,7 +6,7 @@
 .chart-host{position:relative}.chart-host>.tradingview-widget-container{position:absolute;inset:0}.chart-host>.pending-chart{opacity:0;pointer-events:none}
 .chart-tools{display:flex;flex-wrap:wrap;gap:5px;padding:7px 14px;border-bottom:1px solid #243748}.chart-tools button{font-size:10px}.chart-tools button[aria-pressed=true]{color:#85f4dd;border-color:#54b6ac;background:#1b3a40}.chart-tools button.fly-click{box-shadow:0 0 14px #61eed8;background:#39756f}.desk-cursor{position:fixed;left:0;top:0;z-index:100;pointer-events:none;color:#8dffe4;font-size:23px;text-shadow:0 1px 5px #000;transition:transform .4s ease}.desk-cursor small{font-size:8px;background:#183f40;padding:4px;border-radius:3px;white-space:nowrap}.desk-cursor[hidden]{display:none}header{flex-wrap:wrap}
 </style><link rel="stylesheet" href="./portfolio.css"></head><body>
-<header><strong>FLYGUY / TERMINAL</strong><select id="symbol" aria-label="Market symbol"><option value="BITSTAMP:BTCUSD">BTC / USD</option><option value="COINBASE:ETHUSD">ETH / USD</option><option value="NASDAQ:AAPL">Apple · AAPL</option><option value="NASDAQ:NVDA">NVIDIA · NVDA</option></select><button id="portfolio-btn" aria-pressed="false">Portfolio</button><small>NIGHT DESK · 03</small></header>
+<header><strong>FLYGUY / TERMINAL</strong><select id="symbol" aria-label="Market symbol"><option value="BITSTAMP:BTCUSD">BTC / USD</option><option value="COINBASE:ETHUSD">ETH / USD</option><option value="NASDAQ:AAPL">Apple · AAPL</option><option value="NASDAQ:NVDA">NVIDIA · NVDA</option></select><button id="portfolio-btn" aria-pressed="false">Portfolio</button><small>NIGHT DESK · 02</small></header>
 <nav class="chart-tools" aria-label="Chart controls"><button data-style="1" aria-pressed="true">Candles</button><button data-style="2" aria-pressed="false">Line</button><button data-style="3" aria-pressed="false">Area</button><button data-study="MASimple@tv-basicstudies" aria-pressed="false">MA</button><button data-study="StochasticRSI@tv-basicstudies" aria-pressed="false">Stoch RSI</button><button data-study="ROC@tv-basicstudies" aria-pressed="false">ROC</button><button id="clear-studies">Clear indicators</button></nav><div id="desk-cursor" class="desk-cursor" hidden aria-hidden="true">&#10148; <small>FLYGUY</small></div>
 <main><div class="chart-host" id="chart-host"></div><div class="feed-status" id="feed-status" role="status"><div class="orb">↗</div><small>MARKET OBSERVATORY</small><strong id="status-title">Connecting to TradingView</strong><p id="status-copy">Opening the market feed. Your little observer has a front-row seat.</p><div class="feed-links"><button id="retry" hidden>Reconnect</button><a id="fallback-link" href="https://www.tradingview.com/symbols/BTCUSD/" target="_blank" rel="noopener noreferrer">Open on TradingView ↗</a></div></div></main>
 <div class="credit"><a id="credit-link" href="https://www.tradingview.com/symbols/BTCUSD/" target="_blank" rel="noopener nofollow">BTCUSD chart by TradingView</a><span id="feed-label">External market feed · connecting</span></div>
@@ -21,11 +21,14 @@ $("#portfolio-btn").onclick = () => portfolio.show(!portfolio.visible);
 let generation = 0, timer, observer;
 const names = { 'BITSTAMP:BTCUSD': ['BTCUSD', 'BTCUSD'], 'COINBASE:ETHUSD': ['ETHUSD', 'ETHUSD'], 'KRAKEN:XMRUSD': ['XMRUSD', 'XMRUSD'], 'NASDAQ:AAPL': ['AAPL', 'NASDAQ-AAPL'], 'NASDAQ:NVDA': ['NVDA', 'NASDAQ-NVDA'] };
 const symbolSelect = $('#symbol');
+const cityDesk = new URLSearchParams(location.search).get('cityDesk');
+const marketStorageKey = cityDesk !== null ? 'hiflyguy.market.city.' + cityDesk : 'hiflyguy.market.v1';
+if (cityDesk !== null) { document.querySelector('header strong').textContent = 'WING STREET / TERMINAL'; document.querySelector('header small').textContent = 'DESK ' + (Number(cityDesk) + 1); document.querySelector('#desk-cursor small').textContent = ['TICKER', 'BID', 'ASK'][Number(cityDesk)] || 'CREW'; }
 symbolSelect.add(new Option('XMR / USD', 'KRAKEN:XMRUSD'), 2);
 let chartStyle = '1', studies = [];
 const studyIds = [...document.querySelectorAll('[data-study]')].map(b => b.dataset.study);
 try {
-  const saved = JSON.parse(window.frameElement?.dataset.marketState || localStorage.getItem('hiflyguy.market.v1') || '{}');
+  const saved = JSON.parse(window.frameElement?.dataset.marketState || localStorage.getItem(marketStorageKey) || '{}');
   if (Object.hasOwn(names, saved.symbol)) symbolSelect.value = saved.symbol;
   if (['1','2','3'].includes(saved.style)) chartStyle = saved.style;
   if (Array.isArray(saved.studies)) studies = studyIds.filter(id => saved.studies.includes(id));
@@ -34,7 +37,7 @@ window.saveMarketState = saveMarketState;
 function saveMarketState() {
   const state = JSON.stringify({symbol:symbolSelect.value, style:chartStyle, studies});
   if (window.frameElement) window.frameElement.dataset.marketState = state;
-  try { localStorage.setItem('hiflyguy.market.v1', state); } catch {}
+  try { localStorage.setItem(marketStorageKey, state); } catch {}
 }
 function updateChartControls() {
   document.querySelectorAll('[data-style]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.style === chartStyle)));

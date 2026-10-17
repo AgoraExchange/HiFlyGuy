@@ -1,3 +1,4 @@
+import { Megacity } from './megacity.js';
 import { NEW_ITEMS } from './world-items.js';
 import { createWorldItem, animateWorldItem } from './object-models.js';
 import { LifeScenes, addLifeProps, animateLifeProps } from './life-scenes.js';
@@ -209,6 +210,7 @@ export class Habitat {
       const click = this.down && !this.dragged && e.button === 0 && Math.hypot(e.clientX - this.down[0], e.clientY - this.down[1]) < 6; this.down = null;
       if (!click) return;
       const p = hit(e);
+      if (this.environment === 'megacity' && !this.placing) { this.megacity.pick(this.ray); return; }
       if (this.placing) { if (p && Math.hypot(p.x, p.z) <= WORLD.objectRadius) onPlace(p.x, p.z); return; }
       const screenHit = this.computerRoom?.screenHit(this.ray, this.scene);
       if (screenHit) { this.computerRoom.clickScreen(screenHit); return; }
@@ -223,7 +225,10 @@ export class Habitat {
   resize() { const w = this.container.clientWidth, h = this.container.clientHeight; if (!w || !h) return; this.camera.aspect = w / h; this.camera.fov = this.firstPerson?.active ? 65 : w < h ? 55 : 38; this.camera.updateProjectionMatrix(); this.renderer.setSize(w, h); this.computerRoom?.resize(w, h); if (this.homeFraming) this.frame(); }
   setEnvironment(environment) {
     this.firstPerson?.exit(); this.endEncounter();
-    this.environment = environment; this.resetTrail(); this.lifeScenes.setRoom(environment); const computer = environment === 'computer';
+    this.environment = environment;
+    if (this.megacity) { this.megacity.panel.hidden = environment !== 'megacity'; if (environment !== 'megacity') this.megacity.workstations.hide(); this.scene.add(this.fly.group); this.fly.group.scale.setScalar(1); }
+    if (environment === 'megacity' && !this.megacity) this.megacity = new Megacity(this, createFly);
+    this.resetTrail(); this.lifeScenes.setRoom(environment); const computer = environment === 'computer';
     if (computer && !this.computerRoom) this.computerRoom = new ComputerRoom(this.container, this.scene, this.authorizeTerminal);
     this.computerRoom?.setVisible(computer);
     if (environment === 'playground' && !this.playground) { this.playground = new Playground(); this.scene.add(this.playground.group); }
@@ -255,7 +260,7 @@ export class Habitat {
   setPlacement(enabled) { this.placing = enabled; this.controls.enabled = !enabled && !this.swatterMode && !this.firstPerson?.active; this.ghost.visible = false; this.renderer.domElement.style.cursor = enabled || this.swatterMode ? 'crosshair' : 'grab'; }
   setSwatter(enabled) { this.swatterMode = enabled; this.down = null; this.dragged = false; this.setPlacement(false); if (!enabled) this.swatterModel.visible = false; }
   setSelected(id) { this.selectedId = id; this.selection.visible = false; }
-  frame(close = false) { this.firstPerson?.exit(); this.endEncounter(); this.follow = close; this.homeFraming = !close; const p = this.fly.group.position; const computer = this.environment === 'computer', playground = this.environment === 'playground', portrait = this.camera.aspect < 1; this.controls.enableDamping = false; this.controls.update(); this.controls.target.copy(close ? p : computer ? vec(0, portrait ? 3 : 6.3, -7) : playground ? vec(portrait ? 0 : -1.5, .7, 0) : vec(0, this.environment === 'rooftop' ? 4 : 1.5, -2)); this.camera.position.copy(close ? p.clone().add(this.environment === 'fireescape' ? vec(3.8, 3.5, 1.2) : this.environment === 'bar' ? vec(4.5, 3, -1.2) : vec(3.8, 2.4, 4.4)) : computer ? (portrait ? vec(8, 14, 23) : vec(14, 12, 17)) : playground ? (portrait ? vec(65, 102, 128) : vec(76, 82, 91)) : (portrait ? vec(5, 16, 28) : this.environment === 'rooftop' ? vec(15, 11, 21) : vec(14, 12, 19))); this.controls.update(); this.controls.enableDamping = true; }
+  frame(close = false) { if (this.environment === 'megacity' && this.megacity) { this.firstPerson?.exit(); this.homeFraming = !close; if (close) this.megacity.open('hq'); else this.megacity.frame(); this.follow = close; return; } this.firstPerson?.exit(); this.endEncounter(); this.follow = close; this.homeFraming = !close; const p = this.fly.group.position; const computer = this.environment === 'computer', playground = this.environment === 'playground', portrait = this.camera.aspect < 1; this.controls.enableDamping = false; this.controls.update(); this.controls.target.copy(close ? p : computer ? vec(0, portrait ? 3 : 6.3, -7) : playground ? vec(portrait ? 0 : -1.5, .7, 0) : vec(0, this.environment === 'rooftop' ? 4 : 1.5, -2)); this.camera.position.copy(close ? p.clone().add(this.environment === 'fireescape' ? vec(3.8, 3.5, 1.2) : this.environment === 'bar' ? vec(4.5, 3, -1.2) : vec(3.8, 2.4, 4.4)) : computer ? (portrait ? vec(8, 14, 23) : vec(14, 12, 17)) : playground ? (portrait ? vec(65, 102, 128) : vec(76, 82, 91)) : (portrait ? vec(5, 16, 28) : this.environment === 'rooftop' ? vec(15, 11, 21) : vec(14, 12, 19))); this.controls.update(); this.controls.enableDamping = true; }
   startEncounter(duration) {
     if (this.encounter) return;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -314,6 +319,7 @@ export class Habitat {
   }
   resetTrail() { this.trailPoints = []; this.lastTrail = 0; this.trail.geometry.dispose(); this.trail.geometry = new THREE.BufferGeometry(); }
   update(sim, running) {
+    if (this.environment === 'megacity') { this.megacity.update(sim, animateFly, running); return; }
     const present = sim.environment === this.environment;
     if (this.lastResidence !== sim.environment) { this.resetTrail(); this.lastResidence = sim.environment; }
     this.fly.group.scale.setScalar(sim.life.crossingUntil ? Math.max(.06, (sim.life.crossingUntil - sim.time) / 1.4) : 1);
